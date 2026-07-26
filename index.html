@@ -1109,10 +1109,39 @@ const mediaIO = 'IntersectionObserver' in window
     }, { rootMargin: '600px 0px' })
   : null;
 
+/* Умный подбор пути к файлу.
+   Телефоны и разные системы сохраняют фото то как .jpg, то как .jpeg,
+   а файлы могут лежать и в папке media/, и рядом с index.html.
+   Поэтому пробуем все разумные варианты по очереди, пока один не откроется. */
+function pathVariants(src){
+  const file = src.split('/').pop();
+  const dot  = file.lastIndexOf('.');
+  const base = dot > 0 ? file.slice(0, dot) : file;
+  const ext  = dot > 0 ? file.slice(dot + 1).toLowerCase() : '';
+  const exts = (ext === 'jpg' || ext === 'jpeg')
+    ? ['jpg','jpeg','JPG','JPEG']
+    : (ext === 'mp4' || ext === 'webm' || ext === 'mov')
+      ? [ext, ext.toUpperCase()]
+      : [ext, ext.toUpperCase()];
+  const dirs = ['media/', ''];
+  const out = [];
+  dirs.forEach(d => exts.forEach(e => out.push(d + base + (e ? '.' + e : ''))));
+  return [...new Set(out)];
+}
+
+function setSrcWithFallback(node, src){
+  const list = pathVariants(src);
+  let i = 0;
+  const tryNext = () => { if (i < list.length) node.src = list[i++]; };
+  node.addEventListener('error', tryNext);
+  tryNext();
+}
+
 function fadeIn(node){
   const show = () => node.classList.add('loaded');
   if (node.tagName === 'IMG'){
-    if (node.complete) show(); else node.addEventListener('load', show, { once:true });
+    if (node.complete && node.naturalWidth > 0) show();
+    else node.addEventListener('load', show, { once:true });
   } else {
     node.addEventListener('loadeddata', show, { once:true });
   }
@@ -1129,7 +1158,7 @@ function mountMedia(el){
   if (typeof entry === 'object' && entry.video){
     const poster = document.createElement('img');
     poster.className = 'bgfx-poster'; poster.loading = 'lazy'; poster.alt = title;
-    poster.src = entry.poster || '';
+    if (entry.poster) setSrcWithFallback(poster, entry.poster);
     bg.appendChild(poster); if (entry.poster) fadeIn(poster);
 
     const vid = document.createElement('video');
@@ -1137,7 +1166,8 @@ function mountMedia(el){
     vid.muted = true; vid.loop = true; vid.playsInline = true; vid.preload = 'none';
     bg.appendChild(vid);
 
-    const play = () => { if (vid.src !== entry.video) vid.src = entry.video; vid.play().catch(()=>{}); vid.classList.add('playing'); fadeIn(vid); };
+    let vidReady = false;
+    const play = () => { if (!vidReady){ setSrcWithFallback(vid, entry.video); vidReady = true; } vid.play().catch(()=>{}); vid.classList.add('playing'); fadeIn(vid); };
     const stop = () => { vid.classList.remove('playing'); vid.pause(); };
     if (isTouch){
       el.addEventListener('click', play, { once:true });
@@ -1157,12 +1187,12 @@ function mountMedia(el){
   if (isVideoSrc(src)){
     node = document.createElement('video');
     node.className = 'bgfx-media';
-    node.src = src; node.autoplay = true; node.muted = true;
+    setSrcWithFallback(node, src); node.autoplay = true; node.muted = true;
     node.loop = true; node.playsInline = true;
   } else {
     node = document.createElement('img');
     node.className = 'bgfx-media';
-    node.src = src; node.alt = title; node.loading = 'lazy';
+    node.alt = title; node.loading = 'lazy'; setSrcWithFallback(node, src);
   }
   bg.appendChild(node);
   fadeIn(node);
@@ -1170,18 +1200,24 @@ function mountMedia(el){
 }
 
 function applyMedia(){
-  /* hero-видео */
-  if (MEDIA.heroVideo){
-    const holder = document.getElementById('heroMedia');
-    if (holder){
-      const v = document.createElement('video');
-      v.src = MEDIA.heroVideo;
-      if (MEDIA.heroPoster) v.poster = MEDIA.heroPoster;
-      v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true;
-      v.className = 'hero-video';
-      v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;';
-      holder.prepend(v);
-    }
+  /* hero: видео, если задано; иначе — фото-постер как фон */
+  const holder = document.getElementById('heroMedia');
+  if (holder && MEDIA.heroVideo){
+    const v = document.createElement('video');
+    setSrcWithFallback(v, MEDIA.heroVideo);
+    if (MEDIA.heroPoster) v.poster = MEDIA.heroPoster;
+    v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true;
+    v.className = 'hero-video';
+    v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;';
+    holder.prepend(v);
+  } else if (holder && MEDIA.heroPoster){
+    const img = document.createElement('img');
+    img.className = 'hero-still';
+    img.alt = 'Plastic Show';
+    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.4s var(--ease);';
+    img.addEventListener('load', () => { img.style.opacity = '.42'; }, { once:true });
+    setSrcWithFallback(img, MEDIA.heroPoster);
+    holder.prepend(img);
   }
   /* кнопка шоурила: показываем, только если видео задано */
   const reelBtn = document.getElementById('reelBtn');
