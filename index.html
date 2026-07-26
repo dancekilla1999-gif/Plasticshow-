@@ -1036,7 +1036,7 @@ const MEDIA = {
   /* Фоновое видео в hero на главной. Пусто — работает анимация блобов
      поверх фото-постера ниже. Когда будет видео — впишите "media/hero.mp4" */
   heroVideo: "",
-  heroPoster: "media/matrix-hero.jpg",
+  heroPoster: "media/carnival-hero.jpg",
   /* Общий шоурил: кнопка "Шоурил" в hero появится сама, как только
      сюда будет вписан путь к видео, напр. "media/showreel.mp4" */
   showreel: "",
@@ -1078,7 +1078,7 @@ const MEDIA = {
     "svc-4": "media/matrix-stage.jpg",    /* Корпоративные события        */
     "svc-5": "media/white-ball.jpg",      /* Свадебные шоу                */
     "svc-6": "media/black-gold.jpg",      /* Дизайн и пошив костюмов      */
-    "svc-7": "media/matrix-profile.jpg",  /* Креативная режиссура         */
+    "svc-7": "media/matrix-hero.jpg",     /* Креативная режиссура         */
     "svc-8": "media/fans-stage.jpg",      /* Сценография и декорации      */
     "svc-9": "media/crystal.jpg",         /* Эксклюзивные концепции       */
     "svc-10": "media/gold-silk.jpg",      /* Программы под ключ           */
@@ -1118,14 +1118,16 @@ function pathVariants(src){
   const dot  = file.lastIndexOf('.');
   const base = dot > 0 ? file.slice(0, dot) : file;
   const ext  = dot > 0 ? file.slice(dot + 1).toLowerCase() : '';
-  const exts = (ext === 'jpg' || ext === 'jpeg')
-    ? ['jpg','jpeg','JPG','JPEG']
+  const exts = (ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp')
+    ? ['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP']
     : (ext === 'mp4' || ext === 'webm' || ext === 'mov')
       ? [ext, ext.toUpperCase()]
       : [ext, ext.toUpperCase()];
   const dirs = ['media/', ''];
   const out = [];
-  dirs.forEach(d => exts.forEach(e => out.push(d + base + (e ? '.' + e : ''))));
+  /* порядок важен: для каждого расширения сразу пробуем обе папки,
+     чтобы файл в корне находился с 2-й попытки, а не с 9-й */
+  exts.forEach(e => dirs.forEach(d => out.push(d + base + (e ? '.' + e : ''))));
   return [...new Set(out)];
 }
 
