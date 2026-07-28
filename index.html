@@ -460,7 +460,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
         <span class="l"><span class="t-plasma">SHOW</span></span>
       </h1>
       <div class="hero-bottom">
-        <p class="hero-sub">Мы создаём танцевальные шоу мирового уровня — от идеи и хореографии до костюмов, света и сцены. Одна команда. Полный продакшн. Незабываемый результат.</p>
+        <p class="hero-sub" data-edit="hero_sub">Мы создаём танцевальные шоу мирового уровня — от идеи и хореографии до костюмов, света и сцены. Одна команда. Полный продакшн. Незабываемый результат.</p>
         <div class="hero-ctas">
           <a href="#contact" data-link="contact" class="btn btn-plasma">Заказать шоу <span class="arr">→</span></a>
           <a href="#portfolio" data-link="portfolio" class="btn btn-ghost">Смотреть работы</a>
@@ -484,7 +484,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
       <div class="sec-head rv">
         <span class="mono">Что мы делаем</span>
         <h2 class="sec-title">Шоу под ключ.<br><span class="grad">От идеи до оваций.</span></h2>
-        <p class="sec-sub">Полный цикл продакшна внутри одной команды — без подрядчиков и компромиссов в качестве.</p>
+        <p class="sec-sub" data-edit="sub_home_why">Полный цикл продакшна внутри одной команды — без подрядчиков и компромиссов в качестве.</p>
       </div>
       <div class="grid g3">
         <article class="card tilt rv"><div class="ico">✦</div><h3>Постановка шоу</h3><p>Авторские шоу-программы, созданные с нуля под ваше событие, площадку и аудиторию.</p><a class="more" href="#services" data-link="services">Подробнее →</a></article>
@@ -533,7 +533,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
   <!-- awards -->
   <div class="section" style="padding-top:0">
     <div class="wrap">
-      <div class="sec-head rv"><span class="mono">Признание</span><h2 class="sec-title">Награды и достижения</h2><p class="sec-sub">Примеры для замены на ваши реальные регалии — блок готов, просто обновите текст.</p></div>
+      <div class="sec-head rv"><span class="mono">Признание</span><h2 class="sec-title">Награды и достижения</h2><p class="sec-sub" data-edit="sub_home_awards">Примеры для замены на ваши реальные регалии — блок готов, просто обновите текст.</p></div>
       <div class="awards">
         <div class="award rv"><span class="yr">2025</span><b>Шоу года</b><span>Премия событийной индустрии</span></div>
         <div class="award rv rv-d1"><span class="yr">2024</span><b>Лучшая хореография</b><span>Международный фестиваль перформанса</span></div>
@@ -577,7 +577,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
       <div class="sec-head rv">
         <span class="mono">О компании</span>
         <h2 class="sec-title" style="font-size:clamp(2.2rem,6vw,4.6rem)">Мы верим, что движение — <span class="grad">это язык</span></h2>
-        <p class="sec-sub">Plastic Show — продакшн-студия танцевальных шоу полного цикла. С 2013 года мы говорим на этом языке с аудиториями по всему миру: от камерных частных вечеров до фестивальных сцен на десятки тысяч зрителей.</p>
+        <p class="sec-sub" data-edit="sub_about">Plastic Show — продакшн-студия танцевальных шоу полного цикла. С 2013 года мы говорим на этом языке с аудиториями по всему миру: от камерных частных вечеров до фестивальных сцен на десятки тысяч зрителей.</p>
       </div>
       <div class="grid g3">
         <article class="card rv"><div class="ico">☄</div><h3>Миссия</h3><p>Превращать события в эмоции, которые невозможно забыть. Каждое шоу — это история, рассказанная телом, светом и музыкой.</p></article>
@@ -608,10 +608,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
   <div class="section" style="padding-top:0">
     <div class="wrap">
       <div class="sec-head rv"><span class="mono">Команда</span><h2 class="sec-title">Люди, которые делают <span class="grad">магию</span></h2></div>
-      <div class="team team-3">
-        <div class="member rv"><div class="bgfx fx-1" data-media-slot="team-1"></div><span class="sil">✦</span><div class="shade"></div><div class="info"><b>Бондарева Анастасия Алексеевна</b><span>Основатель</span></div></div>
-        <div class="member rv rv-d1"><div class="bgfx fx-2" data-media-slot="team-2"></div><span class="sil">✦</span><div class="shade"></div><div class="info"><b>Бондарев Егор Олегович</b><span>Хореограф</span></div></div>
-        <div class="member rv rv-d2"><div class="bgfx fx-6" data-media-slot="team-3"></div><span class="sil">💃</span><div class="shade"></div><div class="info"><b>Состав труппы</b><span>Артисты Plastic Show</span></div></div>
+      <div class="team team-3" id="teamGrid"></div>
       </div>
     </div>
   </div>
@@ -636,7 +633,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
       <div class="sec-head rv">
         <span class="mono">Услуги</span>
         <h2 class="sec-title" style="font-size:clamp(2.2rem,6vw,4.6rem)">Полный цикл.<br><span class="grad">Ноль компромиссов.</span></h2>
-        <p class="sec-sub">Десять направлений — одна команда и один стандарт качества. Выберите формат или доверьте нам всё событие целиком.</p>
+        <p class="sec-sub" data-edit="sub_services">Десять направлений — одна команда и один стандарт качества. Выберите формат или доверьте нам всё событие целиком.</p>
       </div>
 
       <div class="svc-row rv">
@@ -761,7 +758,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
       <div class="sec-head rv">
         <span class="mono">Портфолио</span>
         <h2 class="sec-title" style="font-size:clamp(2.2rem,6vw,4.6rem)">Работы, которыми <span class="grad">мы гордимся</span></h2>
-        <p class="sec-sub">Нажмите на любую работу для полноэкранного просмотра. Видео и фото из вашего архива встанут сюда автоматически через блок MEDIA.</p>
+        <p class="sec-sub" data-edit="sub_portfolio">Нажмите на любую работу для полноэкранного просмотра. Видео и фото из вашего архива встанут сюда автоматически через блок MEDIA.</p>
       </div>
       <div class="pf-filters rv" role="tablist" aria-label="Фильтр портфолио">
         <button class="active" data-filter="all">Все</button>
@@ -771,16 +768,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
         <button data-filter="folk">Фолк</button>
         <button data-filter="classic">Классика</button>
       </div>
-      <div class="pf-grid" id="pfGrid">
-        <button class="tile wide" data-cat="show" data-media="pf-1" data-title="ЧЁРНАЯ РОЗА" data-catname="Show Production"><div class="bgfx fx-5"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Show Production</span><h3>ЧЁРНАЯ РОЗА — цветочный перформанс</h3></div></button>
-        <button class="tile" data-cat="show" data-media="pf-2" data-title="MATRIX" data-catname="Show Production"><div class="bgfx fx-3"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Show</span><h3>MATRIX — кожа, дым, цифровой код</h3></div></button>
-        <button class="tile" data-cat="show" data-media="pf-3" data-title="БЕЛЫЙ БАЛ" data-catname="Show Production"><div class="bgfx fx-2"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Show</span><h3>БЕЛЫЙ БАЛ — с живым вокалом</h3></div></button>
-        <button class="tile" data-cat="show" data-media="pf-4" data-title="КРИСТАЛЛ" data-catname="Show Production"><div class="bgfx fx-6"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Show</span><h3>КРИСТАЛЛ — короны и глиттер</h3></div></button>
-        <button class="tile" data-cat="folk" data-media="pf-5" data-title="ХОХЛОМА" data-catname="Фолк"><div class="bgfx fx-4"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Фолк</span><h3>ХОХЛОМА — русский стиль</h3></div></button>
-        <button class="tile" data-cat="classic" data-media="pf-6" data-title="БЕЛЫЙ ЛЕБЕДЬ" data-catname="Классика"><div class="bgfx fx-1"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Классика</span><h3>БЕЛЫЙ ЛЕБЕДЬ — классический балет</h3></div></button>
-        <button class="tile wide" data-cat="fashion" data-media="pf-7" data-title="RED VELVET" data-catname="Fashion"><div class="bgfx fx-1"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Fashion</span><h3>RED VELVET — латекс и красные рюши</h3></div></button>
-        <button class="tile" data-cat="ny" data-media="pf-8" data-title="НОВОГОДНЕЕ КАБАРЕ" data-catname="Новый год"><div class="bgfx fx-3"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Новый год</span><h3>НОВОГОДНЕЕ КАБАРЕ</h3></div></button>
-        <button class="tile" data-cat="show" data-media="pf-9" data-title="НУАР" data-catname="Show Production"><div class="bgfx fx-2"></div><div class="shade"></div><span class="play">▶</span><div class="meta"><span class="cat">Show</span><h3>НУАР — театральная драма</h3></div></button>
+      <div class="pf-grid" id="pfGrid"></div>
       </div>
     </div>
   </div>
@@ -795,15 +783,9 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
       <div class="sec-head rv">
         <span class="mono">Ателье</span>
         <h2 class="sec-title" style="font-size:clamp(2.2rem,6vw,4.6rem)">Костюмы, созданные <span class="grad">для движения</span></h2>
-        <p class="sec-sub">Собственное производство сценических костюмов: от эскиза до последней примерки. Каждая вещь рассчитана на свет софитов и амплитуду танца.</p>
+        <p class="sec-sub" data-edit="sub_costumes">Собственное производство сценических костюмов: от эскиза до последней примерки. Каждая вещь рассчитана на свет софитов и амплитуду танца.</p>
       </div>
-      <div class="pf-grid">
-        <div class="tile rv" data-media="cs-1"><div class="bgfx fx-6"></div><div class="shade"></div><div class="meta"><span class="cat">Black &amp; Gold</span><h3>Пайетки и золотой узор</h3></div></div>
-        <div class="tile rv rv-d1" data-media="cs-2"><div class="bgfx fx-4"></div><div class="shade"></div><div class="meta"><span class="cat">Gold Line</span><h3>Золотой шёлк и цепи</h3></div></div>
-        <div class="tile rv rv-d2" data-media="cs-3"><div class="bgfx fx-1"></div><div class="shade"></div><div class="meta"><span class="cat">Фолк</span><h3>Хохлома и кокошники</h3></div></div>
-        <div class="tile rv" data-media="cs-4"><div class="bgfx fx-3"></div><div class="shade"></div><div class="meta"><span class="cat">Новый год</span><h3>Красный корсет и белый мех</h3></div></div>
-        <div class="tile rv rv-d1" data-media="cs-5"><div class="bgfx fx-5"></div><div class="shade"></div><div class="meta"><span class="cat">Ретро</span><h3>Мех и синий атлас</h3></div></div>
-        <div class="tile rv rv-d2" data-media="cs-6"><div class="bgfx fx-2"></div><div class="shade"></div><div class="meta"><span class="cat">Crystal</span><h3>Кристаллы, перья и короны</h3></div></div>
+      <div class="pf-grid" id="csGrid"></div>
       </div>
     </div>
   </div>
@@ -849,7 +831,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
       <div class="sec-head rv">
         <span class="mono">Прайс · Москва 2026</span>
         <h2 class="sec-title" style="font-size:clamp(2.2rem,6vw,4.6rem)">Инвестиция <span class="grad">в впечатление</span></h2>
-        <p class="sec-sub">Актуальный прайс-лист на 2026 год. Все цены указаны без учёта налога — налог +10% рассчитывается дополнительно ко всем позициям. Нажмите на категорию, чтобы перейти к ней, или сразу выберите позицию — кнопка откроет форму заявки с этим пакетом.</p>
+        <p class="sec-sub" data-edit="sub_pricing">Актуальный прайс-лист на 2026 год. Все цены указаны без учёта налога — налог +10% рассчитывается дополнительно ко всем позициям. Нажмите на категорию, чтобы перейти к ней, или сразу выберите позицию — кнопка откроет форму заявки с этим пакетом.</p>
       </div>
 
       <nav class="price-nav rv" aria-label="Категории прайса">
@@ -945,7 +927,7 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
       <div class="sec-head rv">
         <span class="mono">Контакты</span>
         <h2 class="sec-title" style="font-size:clamp(2.2rem,6vw,4.6rem)">Давайте создадим <span class="grad">ваше шоу</span></h2>
-        <p class="sec-sub">Ответим в течение часа в рабочее время. За 24 часа подготовим концепцию и смету под ваше событие.</p>
+        <p class="sec-sub" data-edit="sub_contact">Ответим в течение часа в рабочее время. За 24 часа подготовим концепцию и смету под ваше событие.</p>
       </div>
       <div class="contact-grid">
         <div class="rv">
@@ -962,8 +944,8 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
         </div>
         <div class="rv rv-d1">
           <div class="msgr">
-            <a href="https://wa.me/79667056675" target="_blank" rel="noopener"><span class="mi">💬</span><span><b>WhatsApp</b><i>+7 966 705-66-75</i></span></a>
-            <a href="https://t.me/efremcha" target="_blank" rel="noopener"><span class="mi">✈️</span><span><b>Telegram</b><i>@efremcha</i></span></a>
+            <a href="https://wa.me/79667056675" target="_blank" rel="noopener"><span class="mi">💬</span><span><b>WhatsApp</b><i data-edit="phone">+7 966 705-66-75</i></span></a>
+            <a href="https://t.me/efremcha" target="_blank" rel="noopener"><span class="mi">✈️</span><span><b>Telegram</b><i data-edit="telegram">@efremcha</i></span></a>
             <a href="https://instagram.com/efremcha" target="_blank" rel="noopener"><span class="mi">📸</span><span><b>Instagram</b><i>@efremcha</i></span></a>
             <a href="mailto:efremcha.n@yandex.ru"><span class="mi">✉️</span><span><b>Email</b><i>efremcha.n@yandex.ru</i></span></a>
           </div>
@@ -1032,6 +1014,61 @@ footer{border-top:1px solid var(--line);padding:clamp(50px,7vw,84px) var(--pad) 
    Рекомендации: фото ~1600px по длинной стороне, видео H.264 mp4,
    короткие луп-клипы 8–20 сек, желательно до 15–20 МБ каждое.
    ------------------------------------------------------------------------ */
+/* ========================================================================
+   ПОДКЛЮЧЕНИЕ ПАНЕЛИ УПРАВЛЕНИЯ (Supabase)
+   ------------------------------------------------------------------------
+   Впишите сюда два значения из вашего проекта Supabase:
+   Project Settings → API → Project URL и anon public key.
+   Пока поля пустые — сайт работает на встроенном содержимом ниже.
+   ВАЖНО: сюда вставляется ТОЛЬКО anon public. Ключ service_role
+   на сайт вставлять нельзя никогда — он даёт полный доступ к базе.
+   ======================================================================== */
+const SUPABASE_URL = "https://fbjxjrwksooremlwugec.supabase.co";
+const SUPABASE_KEY = "sb_publishable_phiVksegyoIGffspcrSw5A_Tug9xb_T";
+
+/* номер WhatsApp для формы заявки — подставляется из контента ниже */
+let WA_NUMBER = "79667056675";
+
+/* ------------------------------------------------------------------------
+   РЕДАКТИРУЕМОЕ СОДЕРЖИМОЕ
+   Это значения по умолчанию. Всё, что изменено в панели управления,
+   приходит из Supabase и перекрывает их. Если интернет или база
+   недоступны — сайт всё равно покажет то, что записано здесь.
+   ------------------------------------------------------------------------ */
+const CONTENT = {
+  texts: {},
+  contacts: {
+    whatsapp: "79667056675",
+    telegram: "efremcha",
+    instagram: "efremcha",
+    email: "efremcha.n@yandex.ru"
+  },
+  portfolio: [
+    { id:"pf-1", title:"ЧЁРНАЯ РОЗА", desc:"ЧЁРНАЯ РОЗА — цветочный перформанс", cat:"show",    catname:"Show Production", wide:true,  media:"media/black-rose.jpg",   fx:"fx-5" },
+    { id:"pf-2", title:"MATRIX",       desc:"MATRIX — кожа, дым, цифровой код",   cat:"show",    catname:"Show",            wide:false, media:"media/matrix-stage.jpg", fx:"fx-3" },
+    { id:"pf-3", title:"БЕЛЫЙ БАЛ",    desc:"БЕЛЫЙ БАЛ — с живым вокалом",        cat:"show",    catname:"Show",            wide:false, media:"media/white-ball.jpg",   fx:"fx-2" },
+    { id:"pf-4", title:"КРИСТАЛЛ",     desc:"КРИСТАЛЛ — короны и глиттер",        cat:"show",    catname:"Show",            wide:false, media:"media/crystal.jpg",      fx:"fx-6" },
+    { id:"pf-5", title:"ХОХЛОМА",      desc:"ХОХЛОМА — русский стиль",            cat:"folk",    catname:"Фолк",            wide:false, media:"media/khokhloma.jpg",    fx:"fx-4" },
+    { id:"pf-6", title:"БЕЛЫЙ ЛЕБЕДЬ", desc:"БЕЛЫЙ ЛЕБЕДЬ — классический балет",  cat:"classic", catname:"Классика",        wide:false, media:"media/ballet.jpg",       fx:"fx-1" },
+    { id:"pf-7", title:"RED VELVET",   desc:"RED VELVET — латекс и красные рюши", cat:"fashion", catname:"Fashion",         wide:true,  media:"media/red-velvet.jpg",   fx:"fx-1" },
+    { id:"pf-8", title:"НОВОГОДНЕЕ КАБАРЕ", desc:"НОВОГОДНЕЕ КАБАРЕ",             cat:"ny",      catname:"Новый год",       wide:false, media:"media/new-year.jpg",     fx:"fx-3" },
+    { id:"pf-9", title:"НУАР",         desc:"НУАР — театральная драма",           cat:"show",    catname:"Show Production", wide:false, media:"media/noir.jpg",         fx:"fx-2" }
+  ],
+  costumes: [
+    { id:"cs-1", cat:"Black & Gold", title:"Пайетки и золотой узор",     media:"media/black-gold.jpg", fx:"fx-6" },
+    { id:"cs-2", cat:"Gold Line",    title:"Золотой шёлк и цепи",        media:"media/gold-silk.jpg",  fx:"fx-4" },
+    { id:"cs-3", cat:"Фолк",         title:"Хохлома и кокошники",        media:"media/khokhloma.jpg",  fx:"fx-1" },
+    { id:"cs-4", cat:"Новый год",    title:"Красный корсет и белый мех", media:"media/new-year.jpg",   fx:"fx-3" },
+    { id:"cs-5", cat:"Ретро",        title:"Мех и синий атлас",          media:"media/retro.jpg",      fx:"fx-5" },
+    { id:"cs-6", cat:"Crystal",      title:"Кристаллы, перья и короны",  media:"media/crystal.jpg",    fx:"fx-2" }
+  ],
+  team: [
+    { id:"team-1", name:"Бондарева Анастасия Алексеевна", role:"Основатель",          media:"",                     fx:"fx-1", icon:"✦" },
+    { id:"team-2", name:"Бондарев Егор Олегович",         role:"Хореограф",           media:"",                     fx:"fx-2", icon:"✦" },
+    { id:"team-3", name:"Состав труппы",                  role:"Артисты Plastic Show", media:"media/black-gold.jpg", fx:"fx-6", icon:"💃" }
+  ]
+};
+
 const MEDIA = {
   /* Фоновое видео в hero на главной. Пусто — работает анимация блобов
      поверх фото-постера ниже. Когда будет видео — впишите "media/hero.mp4" */
@@ -1095,6 +1132,121 @@ const MEDIA = {
 };
 
 const isVideoSrc = src => /\.(mp4|webm|mov)(\?.*)?$/i.test(src);
+
+/* ------------------------------------------------------------------------
+   РЕНДЕР ГАЛЕРЕЙ ИЗ ДАННЫХ
+   Портфолио, костюмы и команда собираются из CONTENT — поэтому работы
+   можно добавлять и удалять прямо из панели управления.
+   ------------------------------------------------------------------------ */
+const esc = str => String(str == null ? '' : str)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+function renderPortfolio(){
+  const grid = document.getElementById('pfGrid');
+  if (!grid) return;
+  grid.innerHTML = (CONTENT.portfolio || []).map((w, i) => `
+    <button class="tile${w.wide ? ' wide' : ''} rv${i%4 ? ' rv-d'+(i%4) : ''}" data-cat="${esc(w.cat)}"
+            data-media="${esc(w.id)}" data-title="${esc(w.title)}" data-catname="${esc(w.catname)}">
+      <div class="bgfx ${esc(w.fx || 'fx-1')}"></div><div class="shade"></div><span class="play">▶</span>
+      <div class="meta"><span class="cat">${esc(w.catname)}</span><h3>${esc(w.desc || w.title)}</h3></div>
+    </button>`).join('');
+  (CONTENT.portfolio || []).forEach(w => { if (w.media) MEDIA.slots[w.id] = w.media; });
+}
+
+function renderCostumes(){
+  const grid = document.getElementById('csGrid');
+  if (!grid) return;
+  grid.innerHTML = (CONTENT.costumes || []).map((c, i) => `
+    <div class="tile rv${i%3 ? ' rv-d'+(i%3) : ''}" data-media="${esc(c.id)}"
+         data-title="${esc(c.title)}" data-catname="${esc(c.cat)}">
+      <div class="bgfx ${esc(c.fx || 'fx-1')}"></div><div class="shade"></div>
+      <div class="meta"><span class="cat">${esc(c.cat)}</span><h3>${esc(c.title)}</h3></div>
+    </div>`).join('');
+  (CONTENT.costumes || []).forEach(c => { if (c.media) MEDIA.slots[c.id] = c.media; });
+}
+
+function renderTeam(){
+  const grid = document.getElementById('teamGrid');
+  if (!grid) return;
+  const list = CONTENT.team || [];
+  grid.className = 'team' + (list.length === 3 ? ' team-3' : '');
+  grid.innerHTML = list.map((m, i) => `
+    <div class="member rv${i%4 ? ' rv-d'+(i%4) : ''}">
+      <div class="bgfx ${esc(m.fx || 'fx-1')}" data-media-slot="${esc(m.id)}"></div>
+      <span class="sil">${esc(m.icon || '✦')}</span><div class="shade"></div>
+      <div class="info"><b>${esc(m.name)}</b><span>${esc(m.role)}</span></div>
+    </div>`).join('');
+  list.forEach(m => { if (m.media) MEDIA.slots[m.id] = m.media; });
+}
+
+function applyContacts(){
+  const c = CONTENT.contacts || {};
+  if (c.whatsapp){
+    WA_NUMBER = c.whatsapp;
+    document.querySelectorAll('a[href*="wa.me/"]').forEach(a => { a.href = 'https://wa.me/' + c.whatsapp; });
+    const pretty = c.whatsapp.replace(/^7?(\d{3})(\d{3})(\d{2})(\d{2})$/, '+7 $1 $2-$3-$4');
+    document.querySelectorAll('[data-edit="phone"]').forEach(el => { el.textContent = pretty; });
+  }
+  if (c.telegram){
+    const t = c.telegram.replace('@','');
+    document.querySelectorAll('a[href*="t.me/"]').forEach(a => { a.href = 'https://t.me/' + t; });
+    document.querySelectorAll('[data-edit="telegram"]').forEach(el => { el.textContent = '@' + t; });
+  }
+  if (c.instagram){
+    const g = c.instagram.replace('@','');
+    document.querySelectorAll('a[href*="instagram.com/"]').forEach(a => { a.href = 'https://instagram.com/' + g; });
+    document.querySelectorAll('[data-edit="instagram"]').forEach(el => { el.textContent = '@' + g; });
+  }
+  if (c.email){
+    document.querySelectorAll('a[href^="mailto:"]').forEach(a => {
+      a.href = 'mailto:' + c.email;
+      a.querySelectorAll('i').forEach(i => { i.textContent = c.email; });
+      if (!a.querySelector('i') && a.textContent.includes('@')) a.textContent = c.email;
+    });
+  }
+}
+
+function applyTexts(){
+  Object.entries(CONTENT.texts || {}).forEach(([key, val]) => {
+    if (val == null || val === '') return;
+    document.querySelectorAll(`[data-edit="${key}"]`).forEach(el => { el.textContent = val; });
+  });
+}
+
+/* Забираем сохранённые правки из панели управления.
+   Если Supabase не настроен или недоступен — молча работаем на встроенных
+   значениях, сайт от этого не ломается. */
+async function loadRemoteContent(){
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/site_content?id=eq.1&select=data`, {
+      headers: SUPABASE_KEY.startsWith('eyJ')
+        ? { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+        : { apikey: SUPABASE_KEY },
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return;
+    const rows = await res.json();
+    const data = rows && rows[0] && rows[0].data;
+    if (!data || typeof data !== 'object') return;
+    if (data.texts)     CONTENT.texts     = Object.assign({}, CONTENT.texts, data.texts);
+    if (data.contacts)  CONTENT.contacts  = Object.assign({}, CONTENT.contacts, data.contacts);
+    if (Array.isArray(data.portfolio) && data.portfolio.length) CONTENT.portfolio = data.portfolio;
+    if (Array.isArray(data.costumes)  && data.costumes.length)  CONTENT.costumes  = data.costumes;
+    if (Array.isArray(data.team)      && data.team.length)      CONTENT.team      = data.team;
+    if (data.media){
+      if (data.media.heroPoster !== undefined) MEDIA.heroPoster = data.media.heroPoster;
+      if (data.media.heroVideo  !== undefined) MEDIA.heroVideo  = data.media.heroVideo;
+      if (data.media.showreel   !== undefined) MEDIA.showreel   = data.media.showreel;
+      if (data.media.slots) Object.assign(MEDIA.slots, data.media.slots);
+    }
+  } catch (e) { /* нет связи — остаёмся на встроенном содержимом */ }
+}
+
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
@@ -1516,12 +1668,11 @@ function closeLightbox(){
 
 /* ------------------------------------------------------------------------
    ФОРМА → WHATSAPP
-   Замените номер в WA_NUMBER на реальный (только цифры, с кодом страны).
+   Номер берётся из CONTENT.contacts.whatsapp и меняется в панели управления.
    ------------------------------------------------------------------------ */
 (function contactForm(){
   const btn = document.getElementById('sendBtn');
   if (!btn) return;
-  const WA_NUMBER = '79667056675'; /* ← ваш номер */
   btn.addEventListener('click', () => {
     const name = (document.getElementById('f-name')?.value || '').trim();
     const phone = (document.getElementById('f-phone')?.value || '').trim();
@@ -1560,9 +1711,19 @@ document.addEventListener('click', e => {
 
 /* ------------------------------------------------------------------------
    СТАРТ
+   Сначала пробуем забрать правки из панели управления, затем собираем
+   галереи и подключаем медиа. Нет связи — идём на встроенном содержимом.
    ------------------------------------------------------------------------ */
-applyMedia();
-route();
+function boot(){
+  renderPortfolio();
+  renderCostumes();
+  renderTeam();
+  applyTexts();
+  applyContacts();
+  applyMedia();
+  route();
+}
+loadRemoteContent().then(boot, boot);
 </script>
 </body>
 </html>
