@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Панель управления — Plastic Show</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060608; --bg-2:#0b0b12; --panel:#101017;
+  --gold:#d8b26e; --gold-hi:#f0d9a6; --gold-dim:#8a6a34;
+  --ink:#f4f1ea; --ink-dim:#a9a49b;
+  --line:rgba(216,178,110,.16);
+  --glass:rgba(255,255,255,.03);
+  --glass-brd:rgba(255,255,255,.08);
+  --ok:#4ec98a; --err:#ff6b6b;
+  --r:16px; --ease:cubic-bezier(.16,1,.3,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:'Manrope',system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:120px}
+h1,h2,h3{font-family:'Unbounded',sans-serif;font-weight:600;line-height:1.15}
+button,input,textarea,select{font-family:inherit;font-size:1rem;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--gold);text-decoration:none}
+
+/* ---------- ВХОД ---------- */
+.login-wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}
+.login{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:34px 26px}
+.login h1{font-size:1.35rem;margin-bottom:6px;text-align:center}
+.login .mono{display:block;text-align:center;font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:26px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:8px}
+.field input,.field textarea,.field select{
+  width:100%;padding:14px 16px;background:var(--glass);border:1px solid var(--glass-brd);
+  border-radius:12px;transition:border-color .3s}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--gold)}
+.field textarea{resize:vertical;min-height:96px;line-height:1.6}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 22px;border-radius:999px;
+  font-weight:700;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;transition:.3s var(--ease)}
+.btn-gold{background:linear-gradient(115deg,#8a6a34,#d8b26e 55%,#f0d9a6);color:#120c04}
+.btn-gold:active{transform:scale(.98)}
+.btn-ghost{background:var(--glass);border:1px solid var(--glass-brd);color:var(--ink)}
+.btn-danger{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.35);color:#ff9c9c}
+.btn-sm{width:auto;padding:10px 16px;font-size:.7rem}
+.msg{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:.85rem;line-height:1.5;display:none}
+.msg.show{display:block}
+.msg.ok{background:rgba(78,201,138,.1);border:1px solid rgba(78,201,138,.3);color:#8ee5b5}
+.msg.err{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);color:#ff9c9c}
+
+/* ---------- ШАПКА ---------- */
+.top{position:sticky;top:0;z-index:50;background:rgba(6,6,8,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.top-in{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;max-width:1100px;margin:0 auto}
+.brand{font-family:'Unbounded';font-weight:600;font-size:.9rem;letter-spacing:.02em}
+.brand em{color:var(--gold);font-style:normal}
+.who{font-size:.7rem;color:var(--ink-dim);margin-top:2px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:10px 18px;max-width:1100px;margin:0 auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{white-space:nowrap;padding:9px 16px;border-radius:999px;border:1px solid var(--glass-brd);
+  background:var(--glass);font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);transition:.3s}
+.tabs button.active{background:linear-gradient(115deg,#8a6a34,#d8b26e 55%,#f0d9a6);color:#120c04;border-color:transparent}
+
+/* ---------- КОНТЕНТ ---------- */
+.wrap{max-width:1100px;margin:0 auto;padding:22px 18px}
+.pane{display:none}
+.pane.active{display:block}
+.pane-head{margin-bottom:20px}
+.pane-head h2{font-size:1.1rem;margin-bottom:6px}
+.pane-head p{font-size:.86rem;color:var(--ink-dim);line-height:1.6}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.card-head h3{font-size:.95rem}
+.card-head .tagx{font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);padding:5px 10px;border:1px solid var(--line);border-radius:999px}
+
+/* превью медиа */
+.media-row{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.thumb{width:104px;height:130px;border-radius:12px;overflow:hidden;background:var(--bg-2);border:1px solid var(--glass-brd);flex-shrink:0;position:relative;display:grid;place-items:center}
+.thumb img,.thumb video{width:100%;height:100%;object-fit:cover}
+.thumb .empty{font-size:.66rem;color:var(--ink-dim);text-align:center;padding:8px;line-height:1.4}
+.media-ctl{flex:1;min-width:190px;display:flex;flex-direction:column;gap:10px}
+.file-btn{position:relative;overflow:hidden;display:inline-flex}
+.file-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:100px}
+.bar{height:4px;border-radius:99px;background:var(--glass-brd);overflow:hidden;display:none}
+.bar.show{display:block}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a6a34,#f0d9a6);transition:width .25s}
+.hint{font-size:.72rem;color:var(--ink-dim);line-height:1.5}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.row2{grid-template-columns:1fr}}
+.item-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* нижняя панель сохранения */
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(6,6,8,.94);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);padding:14px 18px calc(14px + env(safe-area-inset-bottom))}
+.savebar-in{max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:center}
+.savebar .btn{flex:1}
+.savebar .state{font-size:.74rem;color:var(--ink-dim);white-space:nowrap}
+.hidden{display:none!important}
+.spin{width:15px;height:15px;border:2px solid rgba(18,12,4,.3);border-top-color:#120c04;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ================= ВХОД ================= -->
+<div class="login-wrap" id="loginView">
+  <form class="login" id="loginForm">
+    <h1>Панель управления</h1>
+    <span class="mono">Plastic Show</span>
+    <div class="field">
+      <label for="email">Почта</label>
+      <input type="email" id="email" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label for="pass">Пароль</label>
+      <input type="password" id="pass" autocomplete="current-password" required>
+    </div>
+    <button class="btn btn-gold" type="submit" id="loginBtn">Войти</button>
+    <div class="msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ================= ПАНЕЛЬ ================= -->
+<div id="appView" class="hidden">
+  <header class="top">
+    <div class="top-in">
+      <div>
+        <div class="brand">PLASTIC <em>SHOW</em></div>
+        <div class="who" id="whoami"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Выйти</button>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="active" data-tab="media">Главная и медиа</button>
+      <button data-tab="portfolio">Портфолио</button>
+      <button data-tab="costumes">Костюмы</button>
+      <button data-tab="team">Команда</button>
+      <button data-tab="texts">Тексты</button>
+      <button data-tab="contacts">Контакты</button>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <!-- ГЛАВНАЯ И МЕДИА -->
+    <section class="pane active" data-pane="media">
+      <div class="pane-head">
+        <h2>Главная страница</h2>
+        <p>Фон первого экрана и общий шоурил. Если загрузить видео — оно заменит фото и будет проигрываться фоном.</p>
+      </div>
+      <div id="heroCards"></div>
+    </section>
+
+    <!-- ПОРТФОЛИО -->
+    <section class="pane" data-pane="portfolio">
+      <div class="pane-head">
+        <h2>Портфолио</h2>
+        <p>Работы, которые видят на странице «Портфолио». Можно менять названия, категории, фото и видео, добавлять новые и удалять.</p>
+      </div>
+      <div id="pfList"></div>
+      <button class="btn btn-ghost" id="pfAdd">+ Добавить работу</button>
+    </section>
+
+    <!-- КОСТЮМЫ -->
+    <section class="pane" data-pane="costumes">
+      <div class="pane-head">
+        <h2>Костюмы</h2>
+        <p>Галерея сценических образов.</p>
+      </div>
+      <div id="csList"></div>
+      <button class="btn btn-ghost" id="csAdd">+ Добавить костюм</button>
+    </section>
+
+    <!-- КОМАНДА -->
+    <section class="pane" data-pane="team">
+      <div class="pane-head">
+        <h2>Команда</h2>
+        <p>Карточки на странице «О нас». Добавляйте танцоров по мере необходимости.</p>
+      </div>
+      <div id="teamList"></div>
+      <button class="btn btn-ghost" id="teamAdd">+ Добавить человека</button>
+    </section>
+
+    <!-- ТЕКСТЫ -->
+    <section class="pane" data-pane="texts">
+      <div class="pane-head">
+        <h2>Тексты</h2>
+        <p>Описания разделов. Пустое поле — останется текст, который сейчас на сайте.</p>
+      </div>
+      <div id="textList"></div>
+    </section>
+
+    <!-- КОНТАКТЫ -->
+    <section class="pane" data-pane="contacts">
+      <div class="pane-head">
+        <h2>Контакты</h2>
+        <p>Подставляются во все кнопки связи, футер и форму заявки.</p>
+      </div>
+      <div class="card">
+        <div class="field"><label>WhatsApp — только цифры, с кодом страны</label><input id="c_whatsapp" placeholder="79667056675"></div>
+        <div class="field"><label>Telegram — без «собаки»</label><input id="c_telegram" placeholder="efremcha"></div>
+        <div class="field"><label>Instagram — без «собаки»</label><input id="c_instagram" placeholder="efremcha"></div>
+        <div class="field" style="margin-bottom:0"><label>Почта</label><input id="c_email" placeholder="efremcha.n@yandex.ru"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="savebar">
+    <div class="savebar-in">
+      <span class="state" id="saveState"></span>
+      <button class="btn btn-gold" id="saveBtn">Сохранить и опубликовать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========================================================================
+   НАСТРОЙКИ ПОДКЛЮЧЕНИЯ
+   Те же значения, что в index.html. Publishable key безопасен для браузера:
+   доступ к данным ограничен правилами доступа в самой базе.
+   ======================================================================== */
+const SB_URL = "https://fbjxjrwksooremlwugec.supabase.co";
+const SB_KEY = "sb_publishable_phiVksegyoIGffspcrSw5A_Tug9xb_T";
+
+const FX = ['fx-1','fx-2','fx-3','fx-4','fx-5','fx-6'];
+let TOKEN = null, DATA = null, dirty = false;
+
+/* ---------- вспомогательное ---------- */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const isVid = u => /\.(mp4|webm|mov)(\?.*)?$/i.test(u||'');
+const uid = p => p + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+function headers(auth){
+  const h = { apikey: SB_KEY };
+  if (auth && TOKEN) h.Authorization = 'Bearer ' + TOKEN;
+  return h;
+}
+function show(el, text, kind){
+  el.textContent = text;
+  el.className = 'msg show ' + (kind || 'ok');
+}
+function markDirty(){
+  dirty = true;
+  $('#saveState').textContent = 'есть несохранённые правки';
+}
+/* сохраняем вход между визитами, если браузер разрешает */
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+
+/* ---------- ВХОД ---------- */
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#loginBtn'), msg = $('#loginMsg');
+  btn.disabled = true; btn.textContent = 'Проверяем…';
+  try {
+    const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+      method:'POST',
+      headers: Object.assign({'Content-Type':'application/json'}, headers(false)),
+      body: JSON.stringify({ email: $('#email').value.trim(), password: $('#pass').value })
+    });
+    const j = await r.json();
+    if (!r.ok || !j.access_token){
+      show(msg, j.error_description || j.msg || 'Не удалось войти. Проверьте почту и пароль.', 'err');
+      return;
+    }
+    TOKEN = j.access_token;
+    store.set('ps_token', TOKEN);
+    store.set('ps_email', j.user && j.user.email || '');
+    await startApp(j.user && j.user.email || '');
+  } catch (err){
+    show(msg, 'Нет связи с сервером. Проверьте интернет.', 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Войти';
+  }
+});
+
+$('#logoutBtn').addEventListener('click', () => {
+  if (dirty && !confirm('Есть несохранённые правки. Всё равно выйти?')) return;
+  TOKEN = null; store.del('ps_token'); store.del('ps_email');
+  location.reload();
+});
+
+/* ---------- ЗАГРУЗКА ДАННЫХ ---------- */
+async function fetchData(){
+  const r = await fetch(`${SB_URL}/rest/v1/site_content?id=eq.1&select=data`, { headers: headers(true) });
+  if (!r.ok) throw new Error('Не удалось прочитать данные (' + r.status + ')');
+  const rows = await r.json();
+  return (rows && rows[0] && rows[0].data) || {};
+}
+
+/* Значения по умолчанию — совпадают с тем, что зашито в сайте.
+   Нужны, чтобы панель не открывалась пустой при первом входе. */
+const DEFAULTS = {
+  media: { heroPoster:'media/carnival-hero.jpg', heroVideo:'', showreel:'' },
+  contacts: { whatsapp:'79667056675', telegram:'efremcha', instagram:'efremcha', email:'efremcha.n@yandex.ru' },
+  texts: {},
+  portfolio: [
+    {id:'pf-1',title:'ЧЁРНАЯ РОЗА',desc:'ЧЁРНАЯ РОЗА — цветочный перформанс',cat:'show',catname:'Show Production',wide:true,media:'media/black-rose.jpg',fx:'fx-5'},
+    {id:'pf-2',title:'MATRIX',desc:'MATRIX — кожа, дым, цифровой код',cat:'show',catname:'Show',wide:false,media:'media/matrix-stage.jpg',fx:'fx-3'},
+    {id:'pf-3',title:'БЕЛЫЙ БАЛ',desc:'БЕЛЫЙ БАЛ — с живым вокалом',cat:'show',catname:'Show',wide:false,media:'media/white-ball.jpg',fx:'fx-2'},
+    {id:'pf-4',title:'КРИСТАЛЛ',desc:'КРИСТАЛЛ — короны и глиттер',cat:'show',catname:'Show',wide:false,media:'media/crystal.jpg',fx:'fx-6'},
+    {id:'pf-5',title:'ХОХЛОМА',desc:'ХОХЛОМА — русский стиль',cat:'folk',catname:'Фолк',wide:false,media:'media/khokhloma.jpg',fx:'fx-4'},
+    {id:'pf-6',title:'БЕЛЫЙ ЛЕБЕДЬ',desc:'БЕЛЫЙ ЛЕБЕДЬ — классический балет',cat:'classic',catname:'Классика',wide:false,media:'media/ballet.jpg',fx:'fx-1'},
+    {id:'pf-7',title:'RED VELVET',desc:'RED VELVET — латекс и красные рюши',cat:'fashion',catname:'Fashion',wide:true,media:'media/red-velvet.jpg',fx:'fx-1'},
+    {id:'pf-8',title:'НОВОГОДНЕЕ КАБАРЕ',desc:'НОВОГОДНЕЕ КАБАРЕ',cat:'ny',catname:'Новый год',wide:false,media:'media/new-year.jpg',fx:'fx-3'},
+    {id:'pf-9',title:'НУАР',desc:'НУАР — театральная драма',cat:'show',catname:'Show Production',wide:false,media:'media/noir.jpg',fx:'fx-2'}
+  ],
+  costumes: [
+    {id:'cs-1',cat:'Black & Gold',title:'Пайетки и золотой узор',media:'media/black-gold.jpg',fx:'fx-6'},
+    {id:'cs-2',cat:'Gold Line',title:'Золотой шёлк и цепи',media:'media/gold-silk.jpg',fx:'fx-4'},
+    {id:'cs-3',cat:'Фолк',title:'Хохлома и кокошники',media:'media/khokhloma.jpg',fx:'fx-1'},
+    {id:'cs-4',cat:'Новый год',title:'Красный корсет и белый мех',media:'media/new-year.jpg',fx:'fx-3'},
+    {id:'cs-5',cat:'Ретро',title:'Мех и синий атлас',media:'media/retro.jpg',fx:'fx-5'},
+    {id:'cs-6',cat:'Crystal',title:'Кристаллы, перья и короны',media:'media/crystal.jpg',fx:'fx-2'}
+  ],
+  team: [
+    {id:'team-1',name:'Бондарева Анастасия Алексеевна',role:'Основатель',media:'',fx:'fx-1',icon:'✦'},
+    {id:'team-2',name:'Бондарев Егор Олегович',role:'Хореограф',media:'',fx:'fx-2',icon:'✦'},
+    {id:'team-3',name:'Состав труппы',role:'Артисты Plastic Show',media:'media/black-gold.jpg',fx:'fx-6',icon:'💃'}
+  ]
+};
+
+const TEXT_FIELDS = [
+  ['hero_sub',       'Главная — текст под названием'],
+  ['sub_home_why',   'Главная — подзаголовок «Почему мы»'],
+  ['sub_home_awards','Главная — подзаголовок «Награды»'],
+  ['sub_about',      'О нас — подзаголовок'],
+  ['sub_services',   'Услуги — подзаголовок'],
+  ['sub_portfolio',  'Портфолио — подзаголовок'],
+  ['sub_costumes',   'Костюмы — подзаголовок'],
+  ['sub_pricing',    'Прайс — подзаголовок'],
+  ['sub_contact',    'Контакты — подзаголовок']
+];
+
+const CATS = [
+  ['show','Шоу-программы'], ['fashion','Fashion'], ['ny','Новый год'],
+  ['folk','Фолк'], ['classic','Классика']
+];
+
+async function startApp(email){
+  $('#loginView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+  $('#whoami').textContent = email || '';
+  try {
+    const remote = await fetchData();
+    DATA = {
+      media:     Object.assign({}, DEFAULTS.media, remote.media || {}),
+      contacts:  Object.assign({}, DEFAULTS.contacts, remote.contacts || {}),
+      texts:     Object.assign({}, DEFAULTS.texts, remote.texts || {}),
+      portfolio: (remote.portfolio && remote.portfolio.length) ? remote.portfolio : DEFAULTS.portfolio,
+      costumes:  (remote.costumes  && remote.costumes.length)  ? remote.costumes  : DEFAULTS.costumes,
+      team:      (remote.team      && remote.team.length)      ? remote.team      : DEFAULTS.team
+    };
+  } catch (e){
+    DATA = JSON.parse(JSON.stringify(DEFAULTS));
+    $('#saveState').textContent = 'работаем на встроенных значениях';
+  }
+  renderAll();
+}
+
+/* ---------- ЗАГРУЗКА ФАЙЛОВ ---------- */
+function translit(name){
+  const map = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',
+    н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',
+    ь:'',э:'e',ю:'yu',я:'ya'};
+  return name.toLowerCase().replace(/[а-яё]/g, c => map[c] || '')
+             .replace(/[^a-z0-9.\-_]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+}
+
+async function uploadFile(file, onProgress){
+  const clean = translit(file.name) || 'file';
+  const path = Date.now().toString(36) + '-' + clean;
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${SB_URL}/storage/v1/object/media/${encodeURIComponent(path)}`);
+    xhr.setRequestHeader('apikey', SB_KEY);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+    xhr.setRequestHeader('x-upsert', 'true');
+    if (file.type) xhr.setRequestHeader('Content-Type', file.type);
+    xhr.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300)
+      ? resolve()
+      : reject(new Error('Сервер ответил ' + xhr.status + '. ' + (xhr.responseText || '').slice(0,140)));
+    xhr.onerror = () => reject(new Error('Обрыв связи при загрузке'));
+    xhr.send(file);
+  });
+  return `${SB_URL}/storage/v1/object/public/media/${encodeURIComponent(path)}`;
+}
+
+/* Универсальный блок «превью + кнопка загрузки» */
+function mediaBlock(cur, opts){
+  const o = opts || {};
+  const id = 'm' + Math.random().toString(36).slice(2,9);
+  const inner = !cur ? '<span class="empty">нет файла</span>'
+    : isVid(cur) ? `<video src="${esc(cur)}" muted playsinline></video>`
+                 : `<img src="${esc(cur)}" alt="">`;
+  return `
+    <div class="media-row" data-mb="${id}">
+      <div class="thumb" data-role="thumb">${inner}</div>
+      <div class="media-ctl">
+        <label class="btn btn-ghost btn-sm file-btn" style="width:100%">
+          ${cur ? 'Заменить файл' : 'Загрузить файл'}
+          <input type="file" accept="image/*,video/*" data-role="file">
+        </label>
+        <div class="bar" data-role="bar"><i></i></div>
+        <p class="hint">${esc(o.hint || 'Фото или видео. Фото — до 2500 px, видео — короткие клипы до 40 МБ.')}</p>
+        ${cur ? '<button class="btn btn-danger btn-sm" data-role="clear" style="width:100%">Убрать файл</button>' : ''}
+      </div>
+    </div>`;
+}
+
+/* Навешивает поведение на блок медиа; onChange(url) вызывается после загрузки */
+function bindMedia(root, onChange){
+  root.querySelectorAll('[data-mb]').forEach(box => {
+    if (box.dataset.bound) return;
+    box.dataset.bound = '1';
+    const file  = box.querySelector('[data-role=file]');
+    const bar   = box.querySelector('[data-role=bar]');
+    const thumb = box.querySelector('[data-role=thumb]');
+    const clear = box.querySelector('[data-role=clear]');
+
+    file.addEventListener('change', async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      if (f.size > 45 * 1024 * 1024){
+        alert('Файл больше 45 МБ. Сожмите видео или загрузите его на видеохостинг.');
+        file.value = ''; return;
+      }
+      bar.classList.add('show'); bar.querySelector('i').style.width = '5%';
+      try {
+        const url = await uploadFile(f, p => { bar.querySelector('i').style.width = Math.round(p*100) + '%'; });
+        thumb.innerHTML = isVid(url)
+          ? `<video src="${esc(url)}" muted playsinline></video>`
+          : `<img src="${esc(url)}" alt="">`;
+        onChange(url);
+        markDirty();
+      } catch (err){
+        alert('Не удалось загрузить: ' + err.message);
+      } finally {
+        setTimeout(() => { bar.classList.remove('show'); bar.querySelector('i').style.width='0'; }, 600);
+        file.value = '';
+      }
+    });
+
+    if (clear) clear.addEventListener('click', () => {
+      thumb.innerHTML = '<span class="empty">нет файла</span>';
+      clear.remove();
+      onChange('');
+      markDirty();
+    });
+  });
+}
+
+/* ---------- РЕНДЕР ВКЛАДОК ---------- */
+function renderAll(){
+  renderHero(); renderPf(); renderCs(); renderTeam(); renderTexts(); renderContacts();
+  $('#saveState').textContent = 'всё сохранено';
+  dirty = false;
+}
+
+function renderHero(){
+  const m = DATA.media;
+  $('#heroCards').innerHTML = `
+    <div class="card">
+      <div class="card-head"><h3>Фон первого экрана</h3><span class="tagx">фото</span></div>
+      ${mediaBlock(m.heroPoster, {hint:'Вертикальное или горизонтальное фото. Ставится фоном под названием студии.'})}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Видео на первом экране</h3><span class="tagx">видео</span></div>
+      ${mediaBlock(m.heroVideo, {hint:'Необязательно. Если загрузите — заменит фото выше и будет крутиться без звука.'})}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Шоурил</h3><span class="tagx">видео</span></div>
+      ${mediaBlock(m.showreel, {hint:'Как только загрузите — на первом экране появится кнопка «Шоурил», открывающая видео на весь экран.'})}
+    </div>`;
+  const boxes = $$('#heroCards [data-mb]');
+  bindMedia($('#heroCards').children[0], u => { DATA.media.heroPoster = u; });
+  bindMedia($('#heroCards').children[1], u => { DATA.media.heroVideo  = u; });
+  bindMedia($('#heroCards').children[2], u => { DATA.media.showreel   = u; });
+}
+
+function renderPf(){
+  $('#pfList').innerHTML = DATA.portfolio.map((w,i) => `
+    <div class="card" data-i="${i}">
+      <div class="card-head"><h3>${esc(w.title) || 'Без названия'}</h3><span class="tagx">${esc(w.catname)}</span></div>
+      ${mediaBlock(w.media, {hint:'Фото или короткое видео работы.'})}
+      <div class="row2" style="margin-top:14px">
+        <div class="field"><label>Название</label><input data-f="title" value="${esc(w.title)}"></div>
+        <div class="field"><label>Подпись на плитке</label><input data-f="desc" value="${esc(w.desc)}"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Раздел</label><select data-f="cat">
+          ${CATS.map(([v,n]) => `<option value="${v}"${w.cat===v?' selected':''}>${n}</option>`).join('')}
+        </select></div>
+        <div class="field"><label>Надпись категории</label><input data-f="catname" value="${esc(w.catname)}"></div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label><input type="checkbox" data-f="wide" ${w.wide?'checked':''} style="width:auto;margin-right:8px">Широкая плитка (на две колонки)</label>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-ghost btn-sm" data-act="up">↑ Выше</button>
+        <button class="btn btn-ghost btn-sm" data-act="down">↓ Ниже</button>
+        <button class="btn btn-danger btn-sm" data-act="del">Удалить</button>
+      </div>
+    </div>`).join('');
+  bindList('#pfList', DATA.portfolio, renderPf);
+}
+
+function renderCs(){
+  $('#csList').innerHTML = DATA.costumes.map((c,i) => `
+    <div class="card" data-i="${i}">
+      <div class="card-head"><h3>${esc(c.title) || 'Без названия'}</h3><span class="tagx">${esc(c.cat)}</span></div>
+      ${mediaBlock(c.media, {hint:'Фото образа.'})}
+      <div class="row2" style="margin-top:14px">
+        <div class="field"><label>Название</label><input data-f="title" value="${esc(c.title)}"></div>
+        <div class="field" style="margin-bottom:0"><label>Категория</label><input data-f="cat" value="${esc(c.cat)}"></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-ghost btn-sm" data-act="up">↑ Выше</button>
+        <button class="btn btn-ghost btn-sm" data-act="down">↓ Ниже</button>
+        <button class="btn btn-danger btn-sm" data-act="del">Удалить</button>
+      </div>
+    </div>`).join('');
+  bindList('#csList', DATA.costumes, renderCs);
+}
+
+function renderTeam(){
+  $('#teamList').innerHTML = DATA.team.map((m,i) => `
+    <div class="card" data-i="${i}">
+      <div class="card-head"><h3>${esc(m.name) || 'Без имени'}</h3><span class="tagx">${esc(m.role)}</span></div>
+      ${mediaBlock(m.media, {hint:'Портретное фото. Пусто — останется золотой градиент.'})}
+      <div class="row2" style="margin-top:14px">
+        <div class="field"><label>Имя</label><input data-f="name" value="${esc(m.name)}"></div>
+        <div class="field" style="margin-bottom:0"><label>Роль</label><input data-f="role" value="${esc(m.role)}"></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-ghost btn-sm" data-act="up">↑ Выше</button>
+        <button class="btn btn-ghost btn-sm" data-act="down">↓ Ниже</button>
+        <button class="btn btn-danger btn-sm" data-act="del">Удалить</button>
+      </div>
+    </div>`).join('');
+  bindList('#teamList', DATA.team, renderTeam);
+}
+
+/* общая обвязка списков: поля, медиа, порядок, удаление */
+function bindList(sel, arr, rerender){
+  const root = $(sel);
+  root.querySelectorAll('.card').forEach(card => {
+    const i = +card.dataset.i;
+    bindMedia(card, url => { arr[i].media = url; });
+    card.querySelectorAll('[data-f]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        arr[i][inp.dataset.f] = inp.type === 'checkbox' ? inp.checked : inp.value;
+        markDirty();
+      });
+      inp.addEventListener('change', () => {
+        arr[i][inp.dataset.f] = inp.type === 'checkbox' ? inp.checked : inp.value;
+        markDirty();
+      });
+    });
+    card.querySelectorAll('[data-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const act = btn.dataset.act;
+        if (act === 'del'){
+          if (!confirm('Удалить «' + (arr[i].title || arr[i].name || 'элемент') + '»? Файл останется в хранилище.')) return;
+          arr.splice(i,1);
+        } else if (act === 'up' && i > 0){
+          [arr[i-1], arr[i]] = [arr[i], arr[i-1]];
+        } else if (act === 'down' && i < arr.length-1){
+          [arr[i+1], arr[i]] = [arr[i], arr[i+1]];
+        } else return;
+        markDirty(); rerender();
+      });
+    });
+  });
+}
+
+function renderTexts(){
+  $('#textList').innerHTML = TEXT_FIELDS.map(([k,label]) => `
+    <div class="card">
+      <div class="field" style="margin-bottom:0">
+        <label>${esc(label)}</label>
+        <textarea data-t="${k}" placeholder="оставьте пустым — сохранится текущий текст">${esc(DATA.texts[k]||'')}</textarea>
+      </div>
+    </div>`).join('');
+  $$('#textList [data-t]').forEach(t => {
+    t.addEventListener('input', () => { DATA.texts[t.dataset.t] = t.value; markDirty(); });
+  });
+}
+
+function renderContacts(){
+  const c = DATA.contacts;
+  $('#c_whatsapp').value  = c.whatsapp  || '';
+  $('#c_telegram').value  = c.telegram  || '';
+  $('#c_instagram').value = c.instagram || '';
+  $('#c_email').value     = c.email     || '';
+  [['#c_whatsapp','whatsapp'],['#c_telegram','telegram'],['#c_instagram','instagram'],['#c_email','email']]
+    .forEach(([sel,key]) => {
+      const el = $(sel);
+      if (el.dataset.bound) return;
+      el.dataset.bound = '1';
+      el.addEventListener('input', () => {
+        DATA.contacts[key] = el.value.trim().replace(/^@/,'');
+        markDirty();
+      });
+    });
+}
+
+/* ---------- ВКЛАДКИ ---------- */
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tab]');
+  if (!b) return;
+  $$('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+  $$('.pane').forEach(p => p.classList.toggle('active', p.dataset.pane === b.dataset.tab));
+  scrollTo({top:0, behavior:'smooth'});
+});
+
+/* ---------- ДОБАВЛЕНИЕ ---------- */
+$('#pfAdd').addEventListener('click', () => {
+  DATA.portfolio.push({ id:uid('pf'), title:'Новая работа', desc:'Новая работа', cat:'show',
+    catname:'Show', wide:false, media:'', fx: FX[DATA.portfolio.length % 6] });
+  markDirty(); renderPf();
+  scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+});
+$('#csAdd').addEventListener('click', () => {
+  DATA.costumes.push({ id:uid('cs'), cat:'Новая категория', title:'Новый образ',
+    media:'', fx: FX[DATA.costumes.length % 6] });
+  markDirty(); renderCs();
+  scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+});
+$('#teamAdd').addEventListener('click', () => {
+  DATA.team.push({ id:uid('team'), name:'Имя Фамилия', role:'Танцор',
+    media:'', fx: FX[DATA.team.length % 6], icon:'✦' });
+  markDirty(); renderTeam();
+  scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+});
+
+/* ---------- СОХРАНЕНИЕ ---------- */
+$('#saveBtn').addEventListener('click', async () => {
+  const btn = $('#saveBtn'), state = $('#saveState');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Сохраняем…';
+  /* собираем слоты медиа для сайта */
+  const slots = {};
+  DATA.portfolio.forEach(w => { if (w.media) slots[w.id] = w.media; });
+  DATA.costumes.forEach(c  => { if (c.media) slots[c.id] = c.media; });
+  DATA.team.forEach(m      => { if (m.media) slots[m.id] = m.media; });
+  const payload = {
+    media: Object.assign({}, DATA.media, { slots }),
+    contacts: DATA.contacts,
+    texts: DATA.texts,
+    portfolio: DATA.portfolio,
+    costumes: DATA.costumes,
+    team: DATA.team
+  };
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/site_content?id=eq.1`, {
+      method:'PATCH',
+      headers: Object.assign({'Content-Type':'application/json','Prefer':'return=minimal'}, headers(true)),
+      body: JSON.stringify({ data: payload, updated_at: new Date().toISOString() })
+    });
+    if (!r.ok){
+      const t = await r.text();
+      throw new Error(r.status === 401 || r.status === 403
+        ? 'Сессия истекла — выйдите и войдите снова.'
+        : (t || 'ошибка ' + r.status));
+    }
+    dirty = false;
+    state.textContent = 'опубликовано ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  } catch (err){
+    alert('Не удалось сохранить: ' + err.message);
+    state.textContent = 'не сохранено';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Сохранить и опубликовать';
+  }
+});
+
+addEventListener('beforeunload', e => {
+  if (dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ---------- АВТОВХОД ПО СОХРАНЁННОЙ СЕССИИ ---------- */
+(async function init(){
+  const saved = store.get('ps_token');
+  if (!saved) return;
+  TOKEN = saved;
+  try {
+    const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: headers(true) });
+    if (r.ok){
+      const u = await r.json();
+      await startApp(u.email || store.get('ps_email') || '');
+    } else {
+      TOKEN = null; store.del('ps_token');
+    }
+  } catch(e){ TOKEN = null; }
+})();
+</script>
+</body>
+</html>
