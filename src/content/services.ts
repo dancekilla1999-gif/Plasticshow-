@@ -24,7 +24,7 @@ export const SERVICES: Service[] = [
       'Генеральный прогон на площадке включён',
     ],
     cta: 'Обсудить постановку',
-    cover: 'black-rose',
+    cover: 'rozy-tsvety-13',
   },
   {
     slug: 'dance-performance',
@@ -38,7 +38,7 @@ export const SERVICES: Service[] = [
       'Собственные костюмы к каждому номеру',
     ],
     cta: 'Выбрать номер',
-    cover: 'red-velvet',
+    cover: 'apalle-3',
   },
   {
     slug: 'luxury-events',
@@ -52,7 +52,7 @@ export const SERVICES: Service[] = [
       'Персональный продюсер на весь проект',
     ],
     cta: 'Запросить приватно',
-    cover: 'noir',
+    cover: 'pozhary-1',
   },
   {
     slug: 'corporate',
@@ -66,7 +66,7 @@ export const SERVICES: Service[] = [
       'Опыт работы с большими залами',
     ],
     cta: 'Для компании',
-    cover: 'matrix-stage',
+    cover: 'matritsa-9',
   },
   {
     slug: 'wedding',
@@ -80,7 +80,7 @@ export const SERVICES: Service[] = [
       'Взаимодействие с гостями и финальный флешмоб',
     ],
     cta: 'Для свадьбы',
-    cover: 'white-ball',
+    cover: 'barokko-6',
   },
   {
     slug: 'costume-design',
@@ -94,7 +94,7 @@ export const SERVICES: Service[] = [
       'Конструкция, рассчитанная на движение',
     ],
     cta: 'Смотреть костюмы',
-    cover: 'black-gold',
+    cover: 'gladiatory-1',
   },
   {
     slug: 'creative-direction',
@@ -108,7 +108,7 @@ export const SERVICES: Service[] = [
       'Формат: проект или абонемент',
     ],
     cta: 'Заказать концепцию',
-    cover: 'matrix-hero',
+    cover: 'matritsa-5',
   },
   {
     slug: 'stage-production',
@@ -122,7 +122,7 @@ export const SERVICES: Service[] = [
       'Логистика на любую площадку',
     ],
     cta: 'Обсудить сцену',
-    cover: 'fans-stage',
+    cover: 'gretsiya-10',
   },
   {
     slug: 'show-concepts',
@@ -136,7 +136,7 @@ export const SERVICES: Service[] = [
       'Передача прав на концепцию заказчику',
     ],
     cta: 'Создать эксклюзив',
-    cover: 'crystal',
+    cover: 'snezhnye-korolevy-2',
   },
   {
     slug: 'entertainment-packages',
@@ -150,6 +150,6 @@ export const SERVICES: Service[] = [
       'Резервные номера на непредвиденные случаи',
     ],
     cta: 'Смотреть пакеты',
-    cover: 'gold-silk',
+    cover: 'tsirk-1',
   },
 ];

@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <section className="relative flex min-h-[100svh] items-center justify-center overflow-hidden px-[var(--gutter)] text-center">
       <div className="absolute inset-0">
-        <Media slug="noir" alt="" sizes="100vw" className="h-full w-full object-cover opacity-25" />
+        <Media slug="pozhary-1" alt="" sizes="100vw" className="h-full w-full object-cover opacity-25" />
         <div className="absolute inset-0 bg-gradient-to-b from-void via-void/85 to-void" />
       </div>
 

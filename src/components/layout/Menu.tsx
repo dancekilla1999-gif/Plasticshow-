@@ -10,16 +10,16 @@ import type { MediaSlug } from '@/lib/media';
 
 /** Each nav row previews a different photograph on hover. */
 const PREVIEWS: Record<string, MediaSlug> = {
-  '/': 'carnival-hero',
-  '/about': 'matrix-profile',
-  '/shows': 'black-rose',
-  '/services': 'fans-stage',
-  '/costumes': 'black-gold',
-  '/gallery': 'crystal',
-  '/video': 'matrix-stage',
-  '/team': 'white-ball',
-  '/pricing': 'gold-silk',
-  '/contact': 'noir',
+  '/': 'dikie-zemli-4',
+  '/about': 'matritsa-8',
+  '/shows': 'rozy-tsvety-13',
+  '/services': 'gretsiya-10',
+  '/costumes': 'gladiatory-1',
+  '/gallery': 'snezhnye-korolevy-2',
+  '/video': 'matritsa-9',
+  '/team': 'artist-anna-1',
+  '/pricing': 'barokko-6',
+  '/contact': 'pozhary-1',
 };
 
 export function Menu({ open, onClose }: { open: boolean; onClose: () => void }) {

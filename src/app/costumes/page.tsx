@@ -20,7 +20,7 @@ export default function CostumesPage() {
         kicker="Ателье"
         title="Костюмы для движения"
         lead="Собственное производство сценических костюмов: от эскиза до последней примерки. Каждая вещь рассчитана на свет софитов и амплитуду танца."
-        media="black-gold"
+        media="disko-2"
       />
 
       {/* Process — four steps as a numbered rail. */}
@@ -91,7 +91,7 @@ export default function CostumesPage() {
         title={<>Сошьём <span className="text-scarlet">под вашу сцену</span></>}
         text="Работаем не только для собственных шоу — принимаем заказы от театров, артистов и брендов."
         primary={{ href: '/contact', label: 'Заказать костюмы' }}
-        media="gold-silk"
+        media="atelier-1"
       />
     </>
   );

@@ -104,21 +104,32 @@ export default async function ShowPage({ params }: Params) {
       <section className="px-[var(--gutter)] py-[clamp(4rem,10vw,8rem)]">
         <div className="grid gap-[clamp(2.5rem,6vw,5rem)] lg:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <p className="kicker mb-8" data-reveal>Концепция</p>
+            <p className="kicker mb-8" data-reveal>Костюмы и подача</p>
             <div className="max-w-2xl space-y-6 text-base leading-relaxed text-ash sm:text-lg">
-              {show.body.map((paragraph, i) => (
-                <p key={i} data-reveal data-reveal-delay={i * 0.05}>{paragraph}</p>
-              ))}
+              <p data-reveal>{show.intro}</p>
             </div>
 
             <div className="mt-12 border-l-2 border-scarlet pl-7" data-reveal>
               <p className="kicker mb-3">Костюмы</p>
               <p className="text-base leading-relaxed text-bone/80">{show.costume}</p>
             </div>
+
+            {show.coverFromVideo && (
+              <p className="mt-10 max-w-xl text-sm leading-relaxed text-ash" data-reveal>
+                Обложка — кадр из видеозаписи номера: фотосессия этой постановки ещё не снималась.
+              </p>
+            )}
           </div>
 
+          {/* Facts are the same for every piece — they come from the price list,
+              not from per-show claims. */}
           <dl className="divide-y divide-bone/10 border-y border-bone/10" data-reveal-group>
-            {show.facts.map((fact) => (
+            {[
+              { label: 'Категория', value: CATEGORY_LABEL[show.category] },
+              { label: 'Базовый состав', value: '4 артистки' },
+              { label: 'Доп. артист', value: 'Москва +15 000 ₽ · Екатеринбург +5 000 ₽' },
+              { label: 'Кадров в архиве', value: String(1 + show.stills.length) },
+            ].map((fact) => (
               <div key={fact.label} className="flex items-baseline justify-between gap-6 py-5" data-reveal>
                 <dt className="kicker">{fact.label}</dt>
                 <dd className="text-right text-sm text-bone/85">{fact.value}</dd>
@@ -138,7 +149,9 @@ export default async function ShowPage({ params }: Params) {
         </div>
       </section>
 
-      {/* Stills — opens the shared lightbox. */}
+      {/* Stills — opens the shared lightbox. Hidden when the archive has only
+          the cover frame for this piece. */}
+      {show.stills.length > 0 && (
       <section className="px-[var(--gutter)] pb-[clamp(4rem,10vw,8rem)]">
         <p className="kicker mb-8" data-reveal>Кадры постановки</p>
         <Lightbox
@@ -151,6 +164,7 @@ export default async function ShowPage({ params }: Params) {
           tileClassName="aspect-[3/4]"
         />
       </section>
+      )}
 
       {/* Next show — a full-bleed handover rather than a "back" link. */}
       <Link

@@ -4,3 +4,9 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
+
+# Адаптивные изображения генерируются из assets/photos командой `npm run media`
+# (и автоматически на деплое через vercel-build). 1700 производных файлов
+# в истории репозитория не нужны — исходники лежат в assets/photos.
+public/media/*
+!public/media/README.md

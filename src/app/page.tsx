@@ -129,7 +129,7 @@ export default function HomePage() {
 
           <figure className="relative aspect-[4/5] overflow-hidden" data-reveal="mask">
             <Media
-              slug="fans-stage"
+              slug="gretsiya-10"
               alt="Выступление Plastic Show с веерами на большой сцене"
               sizes="(max-width: 1024px) 100vw, 40vw"
               className="h-full w-full object-cover"

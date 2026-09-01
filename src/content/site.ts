@@ -126,23 +126,98 @@ export const VENUES = {
 
 export type TeamMember = {
   id: string;
+  /** Display name. Troupe members are listed by the first name the studio's
+   *  own archive uses; only the two directors have confirmed full names. */
   name: string;
   role: string;
-  since?: string;
-  media?: MediaSlug;
+  /** Media slug prefix — portraits live as `<slug>-1`, `<slug>-2`, … */
+  slug: string;
+  photos: number;
 };
 
-export const TEAM: TeamMember[] = [
+/** Directors. Credits come from their own CVs; personal contact details and
+ *  dates of birth in those documents are deliberately left off the site. */
+export const DIRECTORS = [
   {
-    id: 'team-1',
+    id: 'anastasia',
     name: 'Анастасия Бондарева',
-    role: 'Режиссёр и хореограф-постановщик · EFREMCHA ART GROUP',
+    role: 'Режиссёр-постановщик · художественный руководитель PLASTICSHOW',
+    slug: 'artist-anastasiya',
+    photos: 5,
+    education: 'Уральский государственный педагогический университет, хореографическое искусство, 2012–2016',
+    credits: [
+      'Премия «Призвание — артист», 2020 — шоу-балет PLASTICSHOW',
+      'Всемирный фестиваль молодёжи, Сочи 2024 — артист и хореограф, представители Сбербанка',
+      'Финал Кубка России по футболу, Лужники 2024 — работа с Shaman',
+      'День города Москвы и Московский урбанистический форум, 2023 — Олег Газманов, ST, Полина Гагарина',
+      'Блогеры России, Москва 2023–2024 — Хабиб, Янгер, Ваша Маруся, Артём Кид',
+      'Фестиваль «Верный отличник», 2023 — Валя Карнавал, Егор Шип',
+      'Чайка на пляже, Ялта 2022 — Анна Боронина, Сосо Павлиашвили, DJ Smash',
+      'TVC Show, Ханчжоу и Car Show, Шанхай, Китай — артист, 2019',
+      'EXPO — работа с певицей Ingrid',
+    ],
+    venues:
+      'Хореограф премиальных площадок: Bla Bla Bar (Екатеринбург, Москва), Monkey, MEMO, Сплетни Анны Асти, Nomo, Kaifuso, Чайка на пляже и ресторан Ливадия в Крыму.',
   },
-  { id: 'team-2', name: 'Егор Бондарев', role: 'Хореограф-постановщик' },
-  { id: 'team-3', name: 'Наталья Бражкина', role: 'Основной артист', since: '2021' },
-  { id: 'team-4', name: 'Юлия Усольцева', role: 'Основной артист', since: '2020' },
-  { id: 'team-5', name: 'Анна Холодова', role: 'Основной артист', since: '2016' },
-  { id: 'team-6', name: 'Владислава Басенкова', role: 'Основной артист', since: '2020' },
-  { id: 'team-7', name: 'Анастасия Житник', role: 'Основной артист', since: '2025' },
-  { id: 'team-8', name: 'Юлия Лепешкина', role: 'Основной артист', since: '2024' },
+  {
+    id: 'egor',
+    name: 'Егор Бондарев',
+    role: 'Хореограф-постановщик',
+    slug: 'artist-egor',
+    photos: 4,
+    education: 'Победитель дальневосточных чемпионатов по брейк-дансу; Dance Awards 2014 — лучший танцор Владивостока',
+    credits: [
+      'Хореограф-постановщик детского «Евровидения», 2019',
+      'Хореограф продюсерского центра Григория Лепса',
+      'Хореограф-постановщик Всемирного фестиваля молодёжи',
+      'День города Москвы, 2023 — Лужники',
+      'Открытие финала чемпионата по регби — ВТБ Арена',
+      'Легенды Тавриды, 2023',
+      'Хореограф и артист у Бьянки, 2018–2021',
+      'Подтанцовка: ASAP Rocky, Wiz Khalifa, Lil Jon, Баста, Егор Крид, Элджей, Федук, Григорий Лепс, Ирина Дубцова',
+      'Преподаватель студии танца MDC Energy',
+    ],
+    venues: '',
+  },
+];
+
+/** Troupe, as listed in the studio's own archive. */
+export const TEAM: TeamMember[] = [
+  { id: 'anna', name: 'Анна', role: 'Артистка', slug: 'artist-anna', photos: 8 },
+  { id: 'yuliya', name: 'Юлия', role: 'Артистка', slug: 'artist-yuliya', photos: 6 },
+  { id: 'vlada', name: 'Влада', role: 'Артистка', slug: 'artist-vlada', photos: 5 },
+  { id: 'arina', name: 'Арина', role: 'Артистка', slug: 'artist-arina', photos: 4 },
+  { id: 'dzhuliya', name: 'Джулия', role: 'Артистка', slug: 'artist-dzhuliya', photos: 4 },
+  { id: 'nastya-aziya', name: 'Настя', role: 'Артистка', slug: 'artist-nastya-aziya', photos: 4 },
+  { id: 'natali', name: 'Натали', role: 'Артистка', slug: 'artist-natali', photos: 4 },
+  { id: 'sofiya', name: 'София', role: 'Артистка', slug: 'artist-sofiya', photos: 3 },
+];
+
+/** Technical and hospitality rider, from the studio's own document. */
+export const RIDER = [
+  {
+    index: '01',
+    title: 'Гримёрная',
+    text: 'Отдельное гримёрное помещение с рейлами, зеркалом и местами отдыха.',
+  },
+  {
+    index: '02',
+    title: 'Питание',
+    text: 'Менее двух часов на площадке — сэндвичи, закуски, вода обязательна. Более двух часов — горячее блюдо на каждого артиста. В праздничные дни — бутылка шампанского и горячее.',
+  },
+  {
+    index: '03',
+    title: 'Площадка',
+    text: 'Площадка, позволяющая исполнить выбранные номера, — по размеру в зависимости от количества артистов.',
+  },
+  {
+    index: '04',
+    title: 'Логистика',
+    text: 'Если на площадке лестницы и нет лифта — нужна помощь координаторов с костюмами.',
+  },
+  {
+    index: '05',
+    title: 'Репетиции',
+    text: 'Ранний чек-ин на репетицию оплачивается отдельно.',
+  },
 ];

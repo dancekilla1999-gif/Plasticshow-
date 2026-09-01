@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function EkaterinburgPricingPage() {
-  return <PriceList city={city} media="khokhloma" />;
+  return <PriceList city={city} media="rus-4" />;
 }

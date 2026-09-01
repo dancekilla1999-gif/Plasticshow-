@@ -24,7 +24,7 @@ export default function AboutPage() {
         kicker="О проекте · с 3 февраля 2015"
         title="Пластика как язык"
         lead="Танцевальный проект PLASTICSHOW сочетает в себе элементы современного танца, перформанса, визуального искусства и икон стиля."
-        media="matrix-hero"
+        media="matritsa-5"
       />
 
       {/* Pull-quote: the studio's own positioning, set as a statement. */}
@@ -45,7 +45,7 @@ export default function AboutPage() {
         <div className="grid gap-[clamp(2rem,5vw,4rem)] lg:grid-cols-[0.85fr_1.15fr]">
           <figure className="relative aspect-[3/4] overflow-hidden" data-reveal="mask">
             <Media
-              slug="black-rose"
+              slug="rozy-tsvety-13"
               alt="Номер ЧЁРНАЯ РОЗА — цветочный перформанс Plastic Show"
               sizes="(max-width: 1024px) 100vw, 42vw"
               className="h-full w-full object-cover"
@@ -208,7 +208,7 @@ export default function AboutPage() {
         title={<>Расскажите <span className="text-scarlet">о событии</span></>}
         text="Подберём формат, состав и постановку под вашу площадку и аудиторию."
         secondary={{ href: '/shows', label: 'Репертуар' }}
-        media="matrix-stage"
+        media="matritsa-9"
       />
     </>
   );

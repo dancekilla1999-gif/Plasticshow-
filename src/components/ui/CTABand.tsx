@@ -9,7 +9,7 @@ export function CTABand({
   text,
   primary = { href: '/contact', label: 'Обсудить шоу' },
   secondary,
-  media = 'fans-stage',
+  media = 'gretsiya-10',
 }: {
   kicker?: string;
   title: React.ReactNode;

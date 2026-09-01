@@ -51,7 +51,7 @@ export function Hero() {
     <div ref={root} className="relative h-[100svh] min-h-[560px] w-full overflow-hidden">
       <div data-hero-backdrop className="absolute inset-0 will-change-transform">
         <Media
-          slug="carnival-hero"
+          slug="dikie-zemli-4"
           alt="Артистки Plastic Show на сцене"
           sizes="100vw"
           priority

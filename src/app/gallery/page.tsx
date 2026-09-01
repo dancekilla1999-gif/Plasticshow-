@@ -22,8 +22,9 @@ const REEL = SHOWS.map((show) => ({
 }));
 
 const GRID: LightboxItem[] = [
+  // Every frame the archive holds for every piece — cover plus stills.
   ...SHOWS.flatMap((show) =>
-    show.stills.slice(0, 1).map((slug) => ({
+    [show.cover, ...show.stills].map((slug) => ({
       slug,
       title: show.title,
       caption: `${show.title} — ${show.tagline}`,
@@ -34,10 +35,10 @@ const GRID: LightboxItem[] = [
     title: costume.title,
     caption: `${costume.cat} — ${costume.title}`,
   })),
-  ...(['matrix-hero', 'fans-stage', 'carnival-hero'] as MediaSlug[]).map((slug) => ({
+  ...(['atelier-1'] as MediaSlug[]).map((slug) => ({
     slug,
-    title: 'Backstage',
-    caption: 'Plastic Show — сцена и закулисье',
+    title: 'Ателье',
+    caption: 'Plastic Show — работа ателье',
   })),
 ]
   // The same photograph can back several shows; show each frame once.
@@ -50,7 +51,7 @@ export default function GalleryPage() {
         kicker="Галерея · 2015 → 2026"
         title="Свет, дым, движение"
         lead="Кадры со сцены, из ателье и из-за кулис. Нажмите на любой кадр для полноэкранного просмотра — стрелки и свайп листают дальше."
-        media="crystal"
+        media="snezhnye-korolevy-2"
       />
 
       <section className="py-[clamp(3rem,7vw,6rem)]">
@@ -73,7 +74,7 @@ export default function GalleryPage() {
         title={<>Следующий кадр — <span className="text-scarlet">ваш</span></>}
         text="Расскажите о площадке и формате: подберём постановку и соберём смету."
         secondary={{ href: '/shows', label: 'Репертуар' }}
-        media="white-ball"
+        media="barokko-6"
       />
     </>
   );
