@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Unbounded, Manrope, JetBrains_Mono } from 'next/font/google';
 import { SITE, CONTACTS } from '@/content/site';
 import { Header } from '@/components/layout/Header';
+import { BrandSprite } from '@/components/brand/BrandSprite';
 import { Footer } from '@/components/layout/Footer';
 import { MotionRuntime } from '@/components/motion/MotionRuntime';
 import { PageTransition } from '@/components/motion/PageTransition';
@@ -55,13 +56,12 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     title: `${SITE.name} — продакшн танцевальных шоу премиум-класса`,
     description: SITE.description,
-    images: [{ url: '/media/carnival-hero-1200.webp', width: 1200, height: 1803, alt: SITE.name }],
+    // Картинка берётся из app/opengraph-image.jpg (файловая конвенция Next).
   },
   twitter: {
     card: 'summary_large_image',
     title: `${SITE.name} — продакшн танцевальных шоу премиум-класса`,
     description: SITE.description,
-    images: ['/media/carnival-hero-1200.webp'],
   },
   manifest: '/site.webmanifest',
   robots: { index: true, follow: true },
@@ -102,6 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru" className={`${unbounded.variable} ${manrope.variable} ${mono.variable}`}>
       <body className="grain">
+        <BrandSprite />
         <script
           type="application/ld+json"
           // Static, build-time constant — no user input reaches this string.

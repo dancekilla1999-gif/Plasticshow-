@@ -9,6 +9,11 @@ export const SITE = {
   url: 'https://plasticshow.ru',
   locale: 'ru_RU',
   founded: '2015-02-03',
+  /**
+   * Дата публикации превью на сайте — её требует schema.org/VideoObject.
+   * Даты самих съёмок в архиве не указаны, поэтому здесь именно публикация.
+   */
+  videoUploadDate: '2026-09-01',
   /** Home bases — each has its own price list. */
   cities: ['Москва', 'Екатеринбург'],
   city: 'Москва',

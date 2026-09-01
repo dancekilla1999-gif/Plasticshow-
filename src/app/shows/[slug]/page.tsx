@@ -4,7 +4,9 @@ import { notFound } from 'next/navigation';
 import { Media } from '@/components/ui/Media';
 import { ButtonLink } from '@/components/ui/Button';
 import { Lightbox } from '@/components/gallery/Lightbox';
+import { InlineVideo } from '@/components/ui/InlineVideo';
 import { SHOWS, CATEGORY_LABEL, getShow } from '@/content/shows';
+import { videoFor } from '@/content/videos';
 import { SITE } from '@/content/site';
 import { whatsappLink } from '@/lib/whatsapp';
 
@@ -36,6 +38,7 @@ export default async function ShowPage({ params }: Params) {
   const { slug } = await params;
   const show = getShow(slug);
   if (!show) notFound();
+  const video = videoFor(show);
 
   const index = SHOWS.findIndex((s) => s.slug === show.slug);
   const next = SHOWS[(index + 1) % SHOWS.length];
@@ -50,12 +53,33 @@ export default async function ShowPage({ params }: Params) {
     performer: { '@type': 'PerformingGroup', name: SITE.name },
   };
 
+  // Отдельная схема ролика: без неё превью не попадает в видеовыдачу.
+  const videoSchema = video && {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: `${show.title} — ${SITE.name}`,
+    description: show.intro,
+    thumbnailUrl: `${SITE.url}/media/${show.cover}-1200.webp`,
+    contentUrl: `${SITE.url}${video.src}`,
+    embedUrl: `${SITE.url}/shows/${show.slug}/`,
+    duration: `PT${video.seconds}S`,
+    width: video.w,
+    height: video.h,
+    uploadDate: SITE.videoUploadDate,
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
+      {videoSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoSchema) }}
+        />
+      )}
 
       {/* Hero — tinted with the show's own palette. */}
       <header className="relative flex min-h-[86svh] items-end overflow-hidden pt-[var(--header-h)]">
@@ -148,6 +172,18 @@ export default async function ShowPage({ params }: Params) {
           </dl>
         </div>
       </section>
+
+      {/* Video, when the archive holds a recording of this piece. */}
+      {video && (
+        <section className="px-[var(--gutter)] pb-[clamp(3rem,7vw,5rem)]">
+          <p className="kicker mb-8" data-reveal>
+            Видео номера · {video.seconds} с
+          </p>
+          <div data-reveal="mask">
+            <InlineVideo video={video} />
+          </div>
+        </section>
+      )}
 
       {/* Stills — opens the shared lightbox. Hidden when the archive has only
           the cover frame for this piece. */}

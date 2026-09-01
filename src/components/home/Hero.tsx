@@ -2,11 +2,19 @@
 
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Media } from '@/components/ui/Media';
 import { StageField } from '@/components/motion/StageField';
+import { HeroVideo } from './HeroVideo';
+import { WordmarkWord } from '@/components/brand/Wordmark';
 import { ButtonLink } from '@/components/ui/Button';
 import { EVENT_FORMATS } from '@/content/site';
 import { getCapabilities } from '@/lib/capabilities';
+
+// Reveal регистрирует плагин тоже, но грузится лениво и позже: без своей
+// регистрации hero создавал бы твины без scrollTrigger, и они за полсекунды
+// доигрывали до конца — контент первого экрана оставался на opacity 0.15.
+gsap.registerPlugin(ScrollTrigger);
 
 /**
  * Opening sequence. The wordmark splits into two lines that rise out of masks
@@ -57,6 +65,7 @@ export function Hero() {
           priority
           className="h-full w-full object-cover object-[50%_35%]"
         />
+        <HeroVideo />
         {/* Two gradients: one grounds the type, one darkens the whole frame. */}
         <div className="absolute inset-0 bg-gradient-to-t from-void via-void/40 to-void/55" />
         <StageField />
@@ -66,19 +75,23 @@ export function Hero() {
         data-hero-content
         className="relative flex h-full flex-col justify-end px-[var(--gutter)] pb-[clamp(5.5rem,11vh,8rem)]"
       >
-        <p data-hero-meta className="kicker mb-7">
-          <span className="mr-3 inline-block h-px w-10 translate-y-[-3px] bg-scarlet align-middle" />
+        <p data-hero-meta className="kicker mb-7 whitespace-nowrap text-[9px] tracking-[0.16em] sm:text-[11px] sm:tracking-[0.28em]">
+          <span className="mr-3 hidden h-px w-10 translate-y-[-3px] bg-scarlet align-middle sm:inline-block" />
           <span className="sm:hidden">Танцевальная инициатива · с 2015</span>
           <span className="hidden sm:inline">Танцевальная инициатива икон стиля · с 2015</span>
         </p>
 
-        <h1 className="display text-[clamp(3rem,15.5vw,15rem)]">
+        {/* Знак — тот же SVG, что в шапке и подвале; текст остаётся для поисковиков. */}
+        <h1 className="w-[min(100%,74rem)] text-bone">
+          <span className="sr-only">PLASTIC SHOW</span>
           <span data-hero-line className="line-mask block">
-            <span className="block">PLASTIC</span>
+            <span className="block">
+              <WordmarkWord word="plastic" className="block h-auto w-full" />
+            </span>
           </span>
-          <span data-hero-line className="line-mask block">
-            <span className="block text-transparent [-webkit-text-stroke:1px_var(--color-bone)] sm:[-webkit-text-stroke:1.5px_var(--color-bone)]">
-              SHOW
+          <span data-hero-line className="line-mask mt-[1.6%] block">
+            <span className="block">
+              <WordmarkWord word="show" outline dot className="block h-auto w-full" />
             </span>
           </span>
         </h1>
