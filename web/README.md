@@ -181,11 +181,15 @@ CMS, достаточно заменить их источник на загру
 
 ```json
 {
-  "installCommand": "cd web && npm ci",
+  "installCommand": "cd web && npm ci --include=dev",
   "buildCommand": "cd web && npm run media && npm run build",
   "outputDirectory": "web/out"
 }
 ```
+
+`--include=dev` обязателен: Vercel собирает с `NODE_ENV=production`, а при нём
+npm по умолчанию пропускает `devDependencies` — то есть `typescript`,
+`tailwindcss` и `@tailwindcss/postcss`, без которых сборка падает.
 
 `npm run media` включён в сборку намеренно: если в корень добавят фотографию
 и забудут прогнать генерацию локально, деплой всё равно соберёт нужные
