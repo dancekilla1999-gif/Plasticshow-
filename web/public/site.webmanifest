@@ -1,0 +1,10 @@
+{
+  "name": "PLASTIC SHOW",
+  "short_name": "PLASTIC SHOW",
+  "description": "Продакшн танцевальных шоу премиум-класса",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08080a",
+  "theme_color": "#08080a",
+  "icons": [{ "src": "/apple-icon.png", "sizes": "180x180", "type": "image/png" }]
+}
