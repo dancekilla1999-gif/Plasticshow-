@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "media": "node scripts/prepare-media.mjs",
-    "vercel-build": "npm run media && next build"
+    "vercel-build": "next build"
   },
   "dependencies": {
     "gsap": "^3.15.0",

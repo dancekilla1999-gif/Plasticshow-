@@ -21,8 +21,11 @@ for (const file of files) {
   const input = sharp(join(SRC, file)).rotate();
   const { width, height } = await input.metadata();
 
+  // Только фиксированные тиры. Раньше сюда добавлялась ещё и родная ширина
+  // кадра — это давало почти-дубли тира 1200 (1318, 1320, 1333…) и лишние
+  // 40 МБ. Если кадр меньше самого узкого тира, отдаём его как есть.
   const widths = WIDTHS.filter((w) => w <= width);
-  if (!widths.includes(width) && widths.length < WIDTHS.length) widths.push(width);
+  if (widths.length === 0) widths.push(width);
 
   for (const w of widths) {
     const resized = sharp(join(SRC, file)).rotate().resize({ width: w, withoutEnlargement: true });
