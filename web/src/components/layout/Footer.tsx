@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CONTACTS, NAV, SITE } from '@/content/site';
 import { SERVICES } from '@/content/services';
+import { CITIES } from '@/content/pricing';
 import { instagramLink, mailLink, telegramLink, whatsappLink } from '@/lib/whatsapp';
 
 export function Footer() {
@@ -33,9 +34,24 @@ export function Footer() {
           </nav>
 
           <div>
+            <p className="kicker mb-5">Прайс по городам</p>
+            <ul className="mb-8 space-y-2.5">
+              {CITIES.map((city) => (
+                <li key={city.slug}>
+                  <Link
+                    href={city.href}
+                    prefetch={false}
+                    className="text-sm text-bone/65 transition-colors hover:text-bone"
+                  >
+                    Цены · {city.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
             <p className="kicker mb-5">Услуги</p>
             <ul className="space-y-2.5">
-              {SERVICES.slice(0, 6).map((service) => (
+              {SERVICES.slice(0, 4).map((service) => (
                 <li key={service.slug}>
                   <Link
                     href={`/services#${service.slug}`}

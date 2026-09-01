@@ -9,6 +9,8 @@ export const SITE = {
   url: 'https://plasticshow.ru',
   locale: 'ru_RU',
   founded: '2015-02-03',
+  /** Home bases — each has its own price list. */
+  cities: ['Москва', 'Екатеринбург'],
   city: 'Москва',
 };
 
@@ -46,6 +48,10 @@ export const EVENT_FORMATS = [
   'Гала-ужины',
 ];
 
+/** Formats the company sells, straight from the 2026 commercial offer. */
+export const OFFER_LINE = ['SHOW', 'WELCOME', 'GO-GO'];
+export const OFFER_VALUES = ['Стиль', 'Энергия', 'Сцена'];
+
 export const MANIFESTO = [
   {
     mark: '01',
@@ -60,7 +66,12 @@ export const MANIFESTO = [
   {
     mark: '03',
     title: 'Шоу за два дня',
-    text: 'Фишка проекта: создание шоу с нуля за два дня. Подбор образов под ваши разноплановые концепции.',
+    text: 'Фишка проекта: создание шоу с нуля за два дня — с залом и стилизацией образа. Подбор образов под ваши разноплановые концепции.',
+  },
+  {
+    mark: '04',
+    title: 'Иммерсивное театральное шоу',
+    text: 'Постановочный процесс под любую концепцию мероприятия — не готовый номер на чужой праздник, а спектакль, собранный вокруг вашего события.',
   },
 ];
 

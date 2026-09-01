@@ -1,6 +1,13 @@
 /**
- * Price list — Москва, 2026. Taken verbatim from the studio's current sheet.
- * Every price is quoted before tax; the +10% note is rendered globally.
+ * Price lists, one per city.
+ *
+ * Moscow and Ekaterinburg run on different rate cards — not a discount on the
+ * same sheet, but separate structures (Ekaterinburg has no government-projects
+ * tier, groups its go-go outings differently, and prices staging as an add-on
+ * rather than a standalone item). So each city is its own set of groups, and
+ * each gets its own route: /pricing and /pricing/ekaterinburg.
+ *
+ * Both sheets are quoted before tax; the +10% note is rendered globally.
  */
 export type PriceItem = {
   id: string;
@@ -26,10 +33,25 @@ export type PriceGroup = {
   footnotes?: { title: string; text: string }[];
 };
 
+export type City = {
+  slug: string;
+  /** Nominative, for headings: «Москва». */
+  name: string;
+  /** Prepositional, for sentences: «в Москве». */
+  locative: string;
+  /** Route for this city's price list. */
+  href: string;
+  /** Page <h1>. Distinct per city so the two lists don't share a heading. */
+  heading: string;
+  kicker: string;
+  lead: string;
+  groups: PriceGroup[];
+};
+
 export const TAX_NOTE =
   'Все цены — без учёта налога. Налог +10% рассчитывается дополнительно ко всем позициям.';
 
-export const PRICE_GROUPS: PriceGroup[] = [
+const MOSCOW_GROUPS: PriceGroup[] = [
   {
     id: 'numbers',
     index: '01',
@@ -118,3 +140,108 @@ export const PRICE_GROUPS: PriceGroup[] = [
     ],
   },
 ];
+
+const EKATERINBURG_GROUPS: PriceGroup[] = [
+  {
+    id: 'numbers',
+    index: '01',
+    kicker: 'Сценические номера',
+    title: 'Номера · состав 4 девушки',
+    text: 'Основная шоу-программа PLASTICSHOW для событий с яркой сценической драматургией.',
+    items: [
+      { id: 'e-n1', name: '1 номер', sub: 'Один выход', price: '40 000', unit: '₽', notes: ['Состав: 4 девушки'], cta: 'Выбрать' },
+      { id: 'e-n2', name: '2 номера', sub: 'Два выхода', price: '50 000', unit: '₽', notes: ['Состав: 4 девушки'], cta: 'Выбрать' },
+      { id: 'e-n3', name: '3 номера', sub: 'Три выхода', price: '60 000', unit: '₽', notes: ['Состав: 4 девушки'], cta: 'Выбрать', highlight: 'Часто выбирают' },
+      { id: 'e-n4', name: '4 номера', sub: 'Четыре выхода', price: '70 000', unit: '₽', notes: ['Состав: 4 девушки'], cta: 'Выбрать' },
+      { id: 'e-n5', name: '5 номеров', sub: 'Пять выходов', price: '80 000', unit: '₽', notes: ['Состав: 4 девушки'], cta: 'Выбрать' },
+    ],
+  },
+  {
+    id: 'special',
+    index: '02',
+    kicker: 'Special offer',
+    title: 'Специальные условия',
+    text: 'Гибкие условия состава и специальные постановочные решения для мероприятий в Екатеринбурге.',
+    items: [
+      { id: 'e-s3', name: 'Состав 3 танцовщицы', sub: 'Вместо базовых четырёх', price: '−5 000', unit: '₽', notes: ['Скидка с каждой позиции выше'], cta: 'Обсудить состав' },
+      { id: 'e-sx', name: 'Доп. танцовщица', sub: 'Сверх базового состава', price: '+5 000', unit: '₽', notes: ['К каждой позиции выше'], cta: 'Добавить артиста' },
+    ],
+  },
+  {
+    id: 'staging',
+    index: '03',
+    kicker: 'Иммерсивное театральное шоу',
+    title: 'Постановка под концепцию',
+    text: 'Постановочный процесс под любую концепцию мероприятия — от идеи до готового номера.',
+    items: [
+      { id: 'e-st', name: 'Постановка с 0', sub: 'Новый номер под событие', price: '+15 000', unit: '₽', notes: ['К позициям выше'], cta: 'Заказать постановку' },
+      { id: 'e-ur', name: 'Срочный проект', sub: 'Постановка с 0 за 2 дня', price: '+25 000', unit: '₽', notes: ['Зал для репетиций', 'Стилизация образа за короткий срок'], cta: 'Обсудить срочный проект', highlight: 'За 2 дня' },
+    ],
+  },
+  {
+    id: 'welcome',
+    index: '04',
+    kicker: 'Welcome',
+    title: 'Велком-перформанс',
+    text: 'Элегантная встреча гостей: соло-артистка на входе или в welcome-зоне.',
+    items: [
+      { id: 'e-w1', name: '30 минут', sub: 'Велком · 1 девушка', price: '5 000', unit: '₽', notes: ['Без учёта налога'], cta: 'Забронировать' },
+      { id: 'e-w2', name: '1 час', sub: 'Велком · 1 девушка', price: '10 000', unit: '₽', notes: ['Без учёта налога'], cta: 'Забронировать' },
+    ],
+  },
+  {
+    id: 'gogo',
+    index: '05',
+    kicker: 'Go-Go',
+    title: 'Гоу-гоу перформанс',
+    text: 'Динамичные танцевальные выходы в течение вечера. Состав: 2 девушки.',
+    items: [
+      { id: 'e-g1', name: '2–4 выхода', sub: 'Состав: 2 девушки', price: '30 000', unit: '₽', notes: ['Без учёта налога'], cta: 'Заказать' },
+      { id: 'e-g2', name: '5–6 выходов', sub: 'Состав: 2 девушки', price: '40 000', unit: '₽', notes: ['Без учёта налога'], cta: 'Заказать' },
+    ],
+    footnotes: [
+      { title: 'Формат гоу-гоу', text: 'Стоимость указана для состава из 2 девушек. Налог +10% применяется ко всем указанным позициям.' },
+    ],
+  },
+  {
+    id: 'newyear',
+    index: '06',
+    kicker: 'Высокий сезон',
+    title: 'Выезды и новогодний период',
+    text: 'Специальные условия бронирования в декабре и на новогоднюю ночь.',
+    items: [
+      { id: 'e-t1', name: 'Выезды', sub: 'За пределы города', price: 'договорная', notes: ['Трансфер оплачивается отдельно'], cta: 'Обсудить выезд' },
+      { id: 'e-ny1', name: '18–30 декабря', sub: 'Повышенный сезон', price: '×1,5', unit: 'к цене', notes: ['Коэффициент к каждой позиции выше'], cta: 'Забронировать дату', highlight: 'Высокий спрос' },
+      { id: 'e-ny2', name: 'Новый год', sub: 'Екатеринбург · 31.12', price: '100 000–150 000', unit: '₽', notes: ['Цена договорная', 'Раннее бронирование обязательно'], cta: 'Забронировать Новый год' },
+    ],
+  },
+];
+
+export const CITIES: City[] = [
+  {
+    slug: 'moscow',
+    name: 'Москва',
+    locative: 'Москве',
+    href: '/pricing',
+    heading: 'Инвестиция во впечатление',
+    kicker: 'Прайс · Москва 2026',
+    lead: 'Полный прайс-лист на 2026 год для мероприятий в Москве и выездов по России и миру.',
+    groups: MOSCOW_GROUPS,
+  },
+  {
+    slug: 'ekaterinburg',
+    name: 'Екатеринбург',
+    locative: 'Екатеринбурге',
+    href: '/pricing/ekaterinburg',
+    // The company's own line from the 2026 offer: «СТИЛЬ • ЭНЕРГИЯ • СЦЕНА».
+    heading: 'Стиль, энергия, сцена',
+    kicker: 'Прайс · Екатеринбург 2026',
+    lead: 'Отдельный прайс-лист на 2026 год для мероприятий в Екатеринбурге и Свердловской области.',
+    groups: EKATERINBURG_GROUPS,
+  },
+];
+
+export const getCity = (slug: string) => CITIES.find((c) => c.slug === slug);
+
+/** Kept for anything that still wants the default (Moscow) sheet. */
+export const PRICE_GROUPS = MOSCOW_GROUPS;

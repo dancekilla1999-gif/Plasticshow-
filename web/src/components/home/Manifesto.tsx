@@ -46,7 +46,7 @@ export function Manifesto() {
         </figure>
       </div>
 
-      <ul className="mt-[clamp(3rem,7vw,6rem)] grid gap-px bg-bone/10 md:grid-cols-3" data-reveal-group>
+      <ul className="mt-[clamp(3rem,7vw,6rem)] grid gap-px bg-bone/10 sm:grid-cols-2 lg:grid-cols-4" data-reveal-group>
         {MANIFESTO.map((item) => (
           <li key={item.mark} className="bg-void px-6 py-10 sm:px-8" data-reveal>
             <span className="font-mono text-[11px] tracking-[0.2em] text-ember">{item.mark}</span>

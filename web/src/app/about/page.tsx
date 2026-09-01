@@ -4,7 +4,11 @@ import { Section } from '@/components/layout/Section';
 import { Media } from '@/components/ui/Media';
 import { Marquee } from '@/components/ui/Marquee';
 import { CTABand } from '@/components/ui/CTABand';
-import { GEOGRAPHY, MANIFESTO, VENUES, COLLABORATIONS, CREDITS, SITE } from '@/content/site';
+import {
+  GEOGRAPHY, MANIFESTO, VENUES, COLLABORATIONS, CREDITS, SITE, OFFER_LINE, OFFER_VALUES,
+} from '@/content/site';
+import { CITIES } from '@/content/pricing';
+import { ButtonLink } from '@/components/ui/Button';
 
 export const metadata: Metadata = {
   title: 'О проекте',
@@ -74,11 +78,45 @@ export default function AboutPage() {
         className="display border-y border-bone/10 py-7 text-[clamp(1.4rem,4.5vw,3.2rem)] text-bone/15"
       />
 
+      {/* Three formats · three values — the company's own framing from the
+          2026 commercial offer. */}
+      <Section kicker="Форматы" title={<>Show · Welcome · <span className="text-scarlet">Go-Go</span></>}>
+        <div className="grid gap-px bg-bone/10 sm:grid-cols-3" data-reveal-group>
+          {OFFER_LINE.map((format, i) => (
+            <div key={format} className="bg-void p-8 sm:p-10" data-reveal>
+              <p className="display text-[clamp(1.4rem,3.4vw,2.4rem)]">{format}</p>
+              <p className="kicker mt-5">{OFFER_VALUES[i]}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Two home bases, each with its own rate card. */}
+      <Section
+        kicker="Города"
+        title={<>Две базы — <span className="text-scarlet">Москва и Екатеринбург</span></>}
+        lead="В каждом городе свой прайс-лист и свой состав. Выезды — в любую точку России и мира."
+      >
+        <div className="grid gap-px bg-bone/10 md:grid-cols-2" data-reveal-group>
+          {CITIES.map((city) => (
+            <div key={city.slug} className="flex flex-col justify-between gap-9 bg-void p-8 sm:p-10" data-reveal>
+              <div>
+                <h3 className="display text-[clamp(1.4rem,3.4vw,2.4rem)]">{city.name}</h3>
+                <p className="mt-5 max-w-sm text-sm leading-relaxed text-ash">{city.lead}</p>
+              </div>
+              <ButtonLink href={city.href} variant="outline">
+                Прайс · {city.name} <span aria-hidden>→</span>
+              </ButtonLink>
+            </div>
+          ))}
+        </div>
+      </Section>
+
       {/* Geography */}
       <Section
         kicker="История и география"
         title={<>Одиннадцать лет <span className="text-scarlet">в движении</span></>}
-        lead={`Работаем с ${new Date(SITE.founded).getFullYear()} года. Москва — база, выезд в любую точку мира.`}
+        lead={`Работаем с ${new Date(SITE.founded).getFullYear()} года. Москва и Екатеринбург — базы, выезд в любую точку мира.`}
       >
         <div className="grid gap-px bg-bone/10 md:grid-cols-2" data-reveal-group>
           <div className="bg-void p-8 sm:p-10" data-reveal>

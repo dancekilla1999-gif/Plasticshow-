@@ -83,14 +83,19 @@ const organisationSchema = {
   description: SITE.description,
   url: SITE.url,
   foundingDate: SITE.founded,
-  address: { '@type': 'PostalAddress', addressLocality: SITE.city, addressCountry: 'RU' },
+  slogan: 'Show · Welcome · Go-Go',
+  address: SITE.cities.map((city) => ({
+    '@type': 'PostalAddress',
+    addressLocality: city,
+    addressCountry: 'RU',
+  })),
   email: CONTACTS.email,
   telephone: `+${CONTACTS.whatsapp}`,
   sameAs: [
     `https://instagram.com/${CONTACTS.instagram}`,
     `https://t.me/${CONTACTS.telegram}`,
   ],
-  areaServed: ['Россия', 'Казахстан', 'Китай', 'Турция', 'Армения'],
+  areaServed: [...SITE.cities, 'Россия', 'Казахстан', 'Китай', 'Турция', 'Армения'],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
