@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Hero } from '@/components/home/Hero';
 import { Manifesto } from '@/components/home/Manifesto';
 import { Stats } from '@/components/home/Stats';
+import { Showreel } from '@/components/home/Showreel';
 import { Section } from '@/components/layout/Section';
 import { ShowTile } from '@/components/ui/ShowTile';
 import { Marquee } from '@/components/ui/Marquee';
@@ -51,6 +52,8 @@ export default function HomePage() {
           </ButtonLink>
         </div>
       </Section>
+
+      <Showreel />
 
       <Marquee
         items={['PLASTIC SHOW', 'МОСКВА', 'ШОУ ПОД КЛЮЧ', 'С 2015 ГОДА', 'ВЫЕЗД ПО МИРУ']}

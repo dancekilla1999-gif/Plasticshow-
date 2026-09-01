@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Wordmark, WordmarkStacked } from '@/components/brand/Wordmark';
 import { CONTACTS, NAV, SITE } from '@/content/site';
 import { SERVICES } from '@/content/services';
 import { CITIES } from '@/content/pricing';
@@ -10,9 +11,7 @@ export function Footer() {
       <div className="px-[var(--gutter)] pb-10 pt-20">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <p className="display text-2xl">
-              PLASTIC<span className="text-scarlet">.</span>SHOW
-            </p>
+            <WordmarkStacked title="Plastic Show" className="h-[4.25rem] w-auto text-bone" />
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-ash">{SITE.description}</p>
           </div>
 
@@ -92,9 +91,7 @@ export function Footer() {
 
         {/* Oversized wordmark, cropped by the viewport edge. */}
         <div aria-hidden className="mt-16 overflow-hidden">
-          <p className="display whitespace-nowrap text-[clamp(3.5rem,15.5vw,15rem)] leading-[0.8] text-bone/[0.055]">
-            PLASTIC SHOW
-          </p>
+          <Wordmark className="h-auto w-[118%] max-w-none text-bone/[0.06] [&_circle]:fill-bone/[0.06]" />
         </div>
 
         <div className="mt-8 flex flex-col gap-3 border-t border-bone/10 pt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-ash sm:flex-row sm:items-center sm:justify-between">

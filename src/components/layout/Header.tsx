@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Wordmark } from '@/components/brand/Wordmark';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { NAV } from '@/content/site';
@@ -41,9 +42,9 @@ export function Header() {
           <Link
             href="/"
             aria-label="Plastic Show — на главную"
-            className="display relative z-10 text-[15px] leading-none tracking-[0.02em] mix-blend-difference"
+            className="group relative z-10 flex items-center text-bone"
           >
-            PLASTIC<span className="text-scarlet">.</span>SHOW
+            <Wordmark className="h-[13px] w-auto transition-opacity duration-500 group-hover:opacity-80 sm:h-[14px]" />
           </Link>
 
           <nav aria-label="Основная навигация" className="hidden items-center gap-9 lg:flex">

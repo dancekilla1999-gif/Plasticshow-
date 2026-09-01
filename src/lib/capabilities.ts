@@ -10,6 +10,8 @@ export type Capabilities = {
   /** Enough cores/memory and a fine pointer to justify shader work. */
   allowHeavy: boolean;
   supportsWebGL: boolean;
+  /** The visitor asked the OS to economise on traffic. */
+  saveData: boolean;
 };
 
 let cached: Capabilities | null = null;
@@ -18,7 +20,13 @@ export function getCapabilities(): Capabilities {
   if (cached) return cached;
 
   if (typeof window === 'undefined') {
-    return { reducedMotion: false, pointerFine: false, allowHeavy: false, supportsWebGL: false };
+    return {
+      reducedMotion: false,
+      pointerFine: false,
+      allowHeavy: false,
+      supportsWebGL: false,
+      saveData: false,
+    };
   }
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -41,6 +49,7 @@ export function getCapabilities(): Capabilities {
     reducedMotion,
     pointerFine,
     supportsWebGL,
+    saveData,
     allowHeavy: !reducedMotion && !saveData && supportsWebGL && cores >= 4 && memory >= 4,
   };
 
