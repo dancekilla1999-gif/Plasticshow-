@@ -20,7 +20,7 @@ export default function ServicesPage() {
         kicker="Услуги · 10 направлений"
         title="Полный цикл"
         lead="Одна команда и один стандарт качества. Выберите формат или доверьте нам всё событие целиком."
-        media="fans-stage"
+        media="gretsiya-10"
       />
 
       <div className="divide-y divide-bone/10 border-t border-bone/10">
@@ -94,7 +94,7 @@ export default function ServicesPage() {
         text="Соберём программу, поставим номера, сошьём костюмы и выведем всё на сцену — по одному договору."
         primary={{ href: '/contact', label: 'Обсудить проект' }}
         secondary={{ href: '/pricing', label: 'Цены' }}
-        media="gold-silk"
+        media="atelier-1"
       />
     </>
   );

@@ -37,7 +37,7 @@ export function Manifesto() {
 
         <figure className="relative aspect-[3/4] overflow-hidden lg:aspect-auto lg:h-full" data-reveal="mask">
           <Media
-            slug="matrix-profile"
+            slug="matritsa-8"
             alt="Артистка Plastic Show в кожаном тренче — номер MATRIX"
             sizes="(max-width: 1024px) 100vw, 35vw"
             className="h-full w-full object-cover"

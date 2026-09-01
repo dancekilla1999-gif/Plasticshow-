@@ -4,6 +4,7 @@ import { CitySwitch } from './CitySwitch';
 import { ButtonLink } from '@/components/ui/Button';
 import { CTABand } from '@/components/ui/CTABand';
 import { TAX_NOTE, type City } from '@/content/pricing';
+import { RIDER } from '@/content/site';
 import { whatsappLink } from '@/lib/whatsapp';
 import type { MediaSlug } from '@/lib/media';
 
@@ -135,6 +136,29 @@ export function PriceList({ city, media }: { city: City; media: MediaSlug }) {
         </div>
       </div>
 
+      {/* Rider — the same technical and hospitality conditions for both cities. */}
+      <section className="border-t border-bone/10 px-[var(--gutter)] py-[clamp(3rem,7vw,5.5rem)]">
+        <header className="mb-10 max-w-3xl">
+          <p className="kicker mb-5" data-reveal>Райдер</p>
+          <h2 className="display text-[clamp(1.4rem,3.6vw,2.8rem)]" data-reveal>
+            Условия на площадке
+          </h2>
+          <p className="mt-5 text-base leading-relaxed text-ash" data-reveal>
+            Технические и бытовые условия для выступления команды.
+          </p>
+        </header>
+
+        <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-reveal-group>
+          {RIDER.map((item) => (
+            <li key={item.index} className="border border-bone/12 bg-void p-6 sm:p-7" data-reveal>
+              <span className="font-mono text-[11px] tracking-[0.2em] text-ember">{item.index}</span>
+              <h3 className="display mt-5 text-base">{item.title}</h3>
+              <p className="mt-3.5 text-sm leading-relaxed text-ash">{item.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       <div className="border-t border-bone/10 px-[var(--gutter)] py-10">
         <p className="max-w-3xl text-sm leading-relaxed text-ash">
           {TAX_NOTE} Финальная смета, точный состав программы и даты обсуждаются индивидуально.
@@ -150,7 +174,7 @@ export function PriceList({ city, media }: { city: City; media: MediaSlug }) {
         text={`Пришлём точную смету с составом, хронометражем и техрайдером для события в ${city.locative}.`}
         primary={{ href: '/contact', label: 'Запросить смету' }}
         secondary={{ href: '/shows', label: 'Репертуар' }}
-        media="new-year"
+        media="novyy-god-2"
       />
     </>
   );

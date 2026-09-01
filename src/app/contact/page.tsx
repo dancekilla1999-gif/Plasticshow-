@@ -25,7 +25,7 @@ export default function ContactPage() {
         kicker="Контакты"
         title="Давайте создадим ваше шоу"
         lead="Ответим в течение часа в рабочее время. Расскажите о событии — предложим концепцию, состав и смету."
-        media="noir"
+        media="pozhary-1"
       />
 
       <section className="px-[var(--gutter)] py-[clamp(3.5rem,9vw,7rem)]">

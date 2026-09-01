@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function PricingPage() {
-  return <PriceList city={city} media="gold-silk" />;
+  return <PriceList city={city} media="atelier-1" />;
 }

@@ -36,7 +36,7 @@ export default function ShowsPage() {
         kicker={`Репертуар · ${SHOWS.length} постановок`}
         title="Каждое шоу — свой мир"
         lead="Готовые номера, которые адаптируются под вашу площадку, хронометраж и палитру. Откройте постановку, чтобы увидеть концепцию, костюмы и состав."
-        media="black-rose"
+        media="rozy-tsvety-13"
       />
 
       <section className="px-[var(--gutter)] pb-[clamp(3.5rem,8vw,7rem)] pt-[clamp(2.5rem,5vw,4rem)]">
@@ -49,7 +49,7 @@ export default function ShowsPage() {
         text="Опишите событие — соберём программу из номеров репертуара или поставим новый специально под вас."
         primary={{ href: '/contact', label: 'Подобрать программу' }}
         secondary={{ href: '/pricing', label: 'Цены' }}
-        media="crystal"
+        media="snezhnye-korolevy-2"
       />
     </>
   );

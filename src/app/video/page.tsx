@@ -25,7 +25,7 @@ export default function VideoPage() {
             ? 'Записи номеров и общий шоурил. Нажмите на кадр, чтобы открыть плеер.'
             : 'Видеоматериалы готовятся к публикации. Пока — постановки в фотографиях: каждая карточка ведёт на страницу шоу с концепцией, костюмами и составом.'
         }
-        media="matrix-stage"
+        media="matritsa-9"
       />
 
       <section className="px-[var(--gutter)] py-[clamp(3.5rem,8vw,7rem)]">
@@ -78,7 +78,7 @@ export default function VideoPage() {
         text="Напишите нам — отправим актуальные видео постановок под ваш формат события."
         primary={{ href: '/contact', label: 'Запросить видео' }}
         secondary={{ href: '/gallery', label: 'Галерея' }}
-        media="carnival-hero"
+        media="dikie-zemli-4"
       />
     </>
   );
