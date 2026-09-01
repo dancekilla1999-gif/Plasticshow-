@@ -173,10 +173,20 @@ CMS, достаточно заменить их источник на загру
 
 ### Vercel
 
-Приложение лежит в корне репозитория, поэтому Vercel определяет Next.js сам —
-никакого `vercel.json` не нужно.
+Две настройки, обе обязательные.
 
-Единственная настройка — скрипт `vercel-build` в `package.json`:
+**`vercel.json`** — говорит, где лежит результат сборки:
+
+```json
+{ "outputDirectory": "out" }
+```
+
+В настройках проекта на Vercel framework выставлен в «Other», поэтому Vercel
+не знает, что Next.js с `output: 'export'` кладёт файлы в `out/`, и без этой
+строки отдаёт 404 на всех адресах. Если в настройках проекта переключить
+framework на Next.js, файл можно удалить.
+
+**Скрипт `vercel-build`** в `package.json`:
 
 ```json
 "vercel-build": "npm run media && next build"
