@@ -11,16 +11,15 @@ GitHub Pages, любом CDN или обычном хостинге, без Node
 ## Запуск
 
 ```bash
-cd web
 npm install
-npm run media     # один раз: генерирует AVIF/WebP из фотографий в корне репозитория
+npm run media     # один раз: генерирует AVIF/WebP из assets/photos
 npm run dev       # http://localhost:3000
 ```
 
 Сборка:
 
 ```bash
-npm run build     # результат — web/out/
+npm run build     # результат — out/
 ```
 
 ---
@@ -28,7 +27,6 @@ npm run build     # результат — web/out/
 ## Структура
 
 ```
-web/
 ├─ src/
 │  ├─ app/                   маршруты (App Router)
 │  │  ├─ page.tsx            главная
@@ -55,7 +53,8 @@ web/
 │  ├─ content/               ★ ВЕСЬ КОНТЕНТ САЙТА
 │  ├─ lib/                   утилиты (медиа, capabilities, ссылки)
 │  └─ styles/globals.css     дизайн-токены и примитивы анимаций
-└─ scripts/prepare-media.mjs генератор адаптивных изображений
+├─ scripts/prepare-media.mjs генератор адаптивных изображений
+└─ assets/photos/           исходные фотографии (вход для генератора)
 ```
 
 ---
@@ -77,7 +76,7 @@ web/
 
 ### Добавить постановку
 
-1. Положить фотографию в корень репозитория, выполнить `npm run media`.
+1. Положить фотографию в `assets/photos/`, выполнить `npm run media`.
 2. Добавить объект в массив `SHOWS` в `src/content/shows.ts`.
 
 Страница `/shows/<slug>`, карточка в каталоге, ссылки в меню, `sitemap.xml`
@@ -99,7 +98,7 @@ web/
 
 ### Добавить видео
 
-1. Положить файл в `web/public/video/`.
+1. Положить файл в `public/video/`.
 2. Добавить запись в `VIDEOS` в `src/content/videos.ts`.
 
 Страница `/video` сама переключится с состояния «готовится» на сетку с плеером.
@@ -115,7 +114,7 @@ CMS, достаточно заменить их источник на загру
 
 ## Изображения
 
-`npm run media` берёт все `.jpeg/.jpg/.png` из корня репозитория и создаёт в
+`npm run media` берёт все `.jpeg/.jpg/.png` из `assets/photos/` и создаёт в
 `public/media/` наборы AVIF + WebP шириной 480/768/1200/1800 px, а также
 инлайновые LQIP-заглушки. Манифест пишется в `src/content/media.generated.ts`.
 
@@ -174,36 +173,39 @@ CMS, достаточно заменить их источник на загру
 
 ### Vercel
 
-В корне репозитория лежит `vercel.json`. Он нужен потому, что приложение
-находится в подпапке `web/`, а в корне репозитория нет `package.json` — без
-конфига Vercel собирает корень и отдаёт старый `index.html` вместо нового
-сайта.
+Приложение лежит в корне репозитория, поэтому Vercel определяет Next.js сам —
+никакого `vercel.json` не нужно.
+
+Единственная настройка — скрипт `vercel-build` в `package.json`:
 
 ```json
-{
-  "installCommand": "cd web && npm ci --include=dev",
-  "buildCommand": "cd web && npm run media && npm run build",
-  "outputDirectory": "web/out"
-}
+"vercel-build": "npm run media && next build"
 ```
 
-`--include=dev` обязателен: Vercel собирает с `NODE_ENV=production`, а при нём
-npm по умолчанию пропускает `devDependencies` — то есть `typescript`,
-`tailwindcss` и `@tailwindcss/postcss`, без которых сборка падает.
-
-`npm run media` включён в сборку намеренно: если в корень добавят фотографию
-и забудут прогнать генерацию локально, деплой всё равно соберёт нужные
-размеры. Добавляет к сборке около полутора минут.
-
-Альтернатива конфигу — выставить **Root Directory = `web`** в настройках
-проекта на Vercel; тогда `vercel.json` можно удалить. Достаточно одного из
-двух способов.
+Vercel выполняет его вместо `build`, поэтому генерация адаптивных изображений
+входит в деплой: если фотографию положили в `assets/photos/` и забыли прогнать
+`npm run media` локально, деплой всё равно соберёт нужные размеры. Локальный
+`npm run build` при этом остаётся быстрым.
 
 ### GitHub Pages
 
-`.github/workflows/deploy.yml` собирает сайт и публикует `web/out` на GitHub
-Pages при пуше в `main` (нужно включить Pages → Source: GitHub Actions).
+`.github/workflows/deploy.yml` собирает сайт и публикует `out/` на GitHub Pages
+при пуше в `main` (нужно включить Pages → Source: GitHub Actions).
 
 ### Любой другой хостинг
 
-Залить содержимое `web/out` — это обычные статические файлы.
+Залить содержимое `out/` — это обычные статические файлы.
+
+---
+
+## История
+
+До этого проекта в репозитории лежал одностраничный сайт (`index.html` плюс
+панель `admin.html`). Он удалён, но остаётся в истории git — вернуть можно так:
+
+```bash
+git show 5b004e2:index.html > index.html
+```
+
+В Vercel прежние продакшн-деплои тоже сохранены и помечены как кандидаты на
+откат, так что вернуться к старой версии можно одной кнопкой в интерфейсе.

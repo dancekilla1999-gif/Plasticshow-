@@ -1,13 +1,13 @@
 /**
- * Turns the raw project photos in ../ into responsive AVIF/WebP sets plus a
- * generated manifest (dimensions + LQIP) that the app imports at build time.
- * Run with `npm run media` whenever new source photos land in the repo root.
+ * Turns the raw project photos in assets/photos into responsive AVIF/WebP sets
+ * plus a generated manifest (dimensions + LQIP) that the app imports at build
+ * time. Run with `npm run media` whenever new source photos land there.
  */
 import { readdir, mkdir, writeFile } from 'node:fs/promises';
 import { join, parse } from 'node:path';
 import sharp from 'sharp';
 
-const SRC = new URL('../../', import.meta.url).pathname;
+const SRC = new URL('../assets/photos/', import.meta.url).pathname;
 const OUT = new URL('../public/media/', import.meta.url).pathname;
 const WIDTHS = [480, 768, 1200, 1800];
 
