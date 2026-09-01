@@ -75,7 +75,7 @@ export function Hero() {
         data-hero-content
         className="relative flex h-full flex-col justify-end px-[var(--gutter)] pb-[clamp(5.5rem,11vh,8rem)]"
       >
-        <p data-hero-meta className="kicker mb-7 whitespace-nowrap text-[10px] tracking-[0.2em] sm:text-[11px] sm:tracking-[0.28em]">
+        <p data-hero-meta className="kicker mb-7 whitespace-nowrap text-[9px] tracking-[0.16em] sm:text-[11px] sm:tracking-[0.28em]">
           <span className="mr-3 hidden h-px w-10 translate-y-[-3px] bg-scarlet align-middle sm:inline-block" />
           <span className="sm:hidden">Танцевальная инициатива · с 2015</span>
           <span className="hidden sm:inline">Танцевальная инициатива икон стиля · с 2015</span>
