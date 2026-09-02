@@ -6,7 +6,7 @@ export const SITE = {
   tagline: 'Танцевальная инициатива икон стиля',
   description:
     'Продакшн танцевальных шоу премиум-класса. Идея → хореография → костюмы → сцена. Москва и весь мир.',
-  url: 'https://plasticshow.ru',
+  url: 'https://plasticshow.pro',
   locale: 'ru_RU',
   founded: '2015-02-03',
   /**
