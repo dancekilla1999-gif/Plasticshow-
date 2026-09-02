@@ -1,0 +1,78 @@
+name: Deploy to hosting (FTP)
+
+# Российская аудитория не всегда достаёт до Vercel по собственному домену,
+# поэтому основной домен обслуживается с обычного хостинга. Сюда выкладывается
+# тот же статический экспорт, что и на Vercel: один код, два адреса.
+#
+# Нужны секреты репозитория (Settings → Secrets and variables → Actions):
+#   FTP_HOST      например server266.hosting.reg.ru
+#   FTP_USER      логин FTP
+#   FTP_PASSWORD  пароль FTP
+#   FTP_DIR       каталог сайта на хостинге, например /www/plasticshow.pro/
+# Без них задача завершается сразу и ничего не ломает.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: hosting
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FTP_HOST: ${{ secrets.FTP_HOST }}
+    steps:
+      - name: Секреты заданы?
+        id: gate
+        run: |
+          if [ -z "$FTP_HOST" ]; then
+            echo "FTP_HOST не задан — деплой на хостинг пропущен."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+        if: steps.gate.outputs.run == 'true'
+
+      # Изображения и видео уже лежат в репозитории, генерация не нужна.
+      - run: npx tsc --noEmit && npm run build
+        if: steps.gate.outputs.run == 'true'
+
+      - name: Конфигурация Apache
+        if: steps.gate.outputs.run == 'true'
+        run: cp deploy/htaccess out/.htaccess
+
+      - name: Выгрузка на хостинг
+        if: steps.gate.outputs.run == 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: out/
+          server-dir: ${{ secrets.FTP_DIR }}
+          # Файл состояния позволяет выкладывать только изменившееся,
+          # иначе 170 МБ медиа уходили бы целиком на каждый пуш.
+          state-name: .ftp-deploy-sync-state.json
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
