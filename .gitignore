@@ -4,7 +4,3 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
-
-# 3D print artefacts: regenerate with scripts/build-frame-parts.py and PrusaSlicer
-*.gcode
-*.gcode.gz
