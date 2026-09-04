@@ -1,21 +1,32 @@
 /**
- * Builds the 3D model of the silicone ear-pad cover (накладка на амбушюру)
- * with the raised "PLASTIC SHOW" wordmark on the outer dome.
+ * Builds the 3D models of the silicone ear-cup covers for AirPods Max —
+ * left and right, with the raised "PLASTIC SHOW" wordmark on the outer face and
+ * openings for the headband arm, the controls, the charging port and the mics.
  *
- * Everything is parametric and dependency-free: the shell is a surface of
- * revolution over an elliptical footprint, the lettering is a stroke font that
- * is turned into a distance field and pushed out along the surface normal, so
- * the wordmark follows the curvature of the dome instead of sitting on a flat
- * patch.
+ * Everything is parametric and dependency-free. The cup is a surface of
+ * revolution over an elliptical footprint; the cover is that surface offset
+ * outwards by the fit clearance and the wall thickness. Openings are cut on the
+ * grid-cell level and stitched with a wall between the outer and the inner
+ * shell, so the result stays watertight. The wordmark is a stroke font turned
+ * into a distance field and pushed out along the surface normal.
  *
  * Run with `npm run model`. Outputs into assets/3d/:
- *   plastic-show-earpad-cover.stl  — watertight mesh, millimetres, print-ready
- *   plastic-show-earpad-cover.png  — software-rendered preview (no GPU needed)
+ *   airpods-max-cover-<side>.stl        накладка, миллиметры, готова к печати
+ *   airpods-max-cover-gauge-<side>.stl  шаблон-кольцо для примерки
+ *   airpods-max-cover.png               рендер-превью, четыре ракурса
+ *
+ * ВАЖНО: CAD-модели Apple в открытом доступе нет. Габариты чашки взяты по
+ * опубликованным размерам и по размерам сменных амбушюр (100 × 85 мм), а
+ * положения органов управления — оценочные. Поэтому сначала печатается шаблон
+ * (`*-gauge-*.stl`): он проверяет и обхват, и совпадение вырезов. Все числа,
+ * которые может понадобиться поправить, собраны в CUP / FIT / CUTOUTS ниже.
  *
  * Useful flags:
- *   --text="OTHER WORDS"   swap the wordmark
- *   --quality=high|med|low mesh density (default med)
- *   --no-preview           skip the PNG render
+ *   --text="OTHER WORDS"   заменить надпись
+ *   --side=right|left|both какую сторону собирать (по умолчанию обе)
+ *   --quality=high|med|low плотность сетки (по умолчанию med)
+ *   --no-mics              не резать окна под микрофоны
+ *   --no-preview           не рендерить PNG
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { deflateSync } from 'node:zlib';
@@ -29,29 +40,114 @@ const args = Object.fromEntries(
   }),
 );
 
-/** Все размеры в миллиметрах. Габарит подобран под чашку AirPods Max. */
-const CFG = {
-  outerWidth: 100, // по оси X (длинная ось эллипса)
-  outerDepth: 86, // по оси Y
-  domeHeight: 14, // высота купола над линией стыка
-  skirtHeight: 9.5, // прямая юбка, которой накладка надевается на чашку
-  skirtFlare: 0.015, // лёгкий развал юбки, чтобы силикон налезал
-  wall: 1.6, // толщина стенки
-  lip: 0.7, // утолщение по краю — за него накладка держится
-  text: typeof args.text === 'string' ? args.text : 'PLASTIC SHOW',
-  capHeight: 7.6, // высота прописных букв
-  strokeWidth: 1.6, // толщина штриха шрифта
-  letterSpacing: 0.06, // в долях кегля
-  embossHeight: 0.85, // насколько надпись выступает над куполом
-  embossEdge: 0.75, // доля штриха, уходящая в скруглённую фаску
-  textCenterY: 0, // сдвиг надписи по короткой оси
-  maxTextWidth: 66, // если строка длиннее — кегль ужимается
+/**
+ * Чашка AirPods Max, все размеры в миллиметрах. Ось X — передне-задняя (короткая),
+ * ось Y — вертикальная в надетом положении (длинная), Z — наружу от головы.
+ */
+const CUP = {
+  width: 85, // передне-задний размер чашки
+  height: 100, // вертикальный размер чашки
+  faceSpan: 0.72, // доля радиуса под плоской лицевой площадкой
+  faceSag: 2.2, // насколько площадка завалена к краю
+  shoulderDrop: 6.5, // высота скругления от площадки до самого широкого места
+  sideHeight: 13, // прямая боковина от широкого места до стыка с амбушюрой
+  sideTaper: 0.022, // боковина сужается книзу — за это накладка и держится
 };
 
-const QUALITY = { low: [192, 110, 28], med: [448, 260, 36], high: [704, 400, 56] };
-const [NU, NS_OUT, NS_IN] = QUALITY[args.quality] ?? QUALITY.med;
+/** Посадка накладки на чашку. */
+const FIT = {
+  clearance: 0.35, // зазор между чашкой и накладкой
+  wall: 1.6, // толщина стенки
+  coverSide: 11, // сколько боковины закрывает накладка: меньше sideHeight,
+  // чтобы кромка не упиралась в амбушюру
+  bead: 0.45, // натяг прижимного бортика по кромке
+  beadSpan: 2.6, // высота, на которой бортик набирает натяг
+};
 
-const DOME_SPLIT = 0.68; // доля параметра s, приходящаяся на купол
+const TEXT_CFG = {
+  text: typeof args.text === 'string' ? args.text : 'PLASTIC SHOW',
+  capHeight: 6.6, // высота прописных букв
+  strokeWidth: 1.4, // толщина штриха
+  letterSpacing: 0.06, // в долях кегля
+  embossHeight: 0.75, // насколько надпись выступает над площадкой
+  embossEdge: 0.8, // доля штриха, уходящая в скруглённую фаску
+  centerY: 0, // сдвиг надписи по вертикали
+  maxWidth: 54, // строка длиннее — кегль ужимается
+};
+
+/**
+ * Вырезы. Положение задаётся «по циферблату» вокруг чашки, если смотреть на неё
+ * снаружи: 0° — верх, 90° — перёд (к лицу), 180° — низ, 270° — затылок. Для левой
+ * накладки перёд зеркалится автоматически. `width` — ширина окна по кромке в мм,
+ * `top` и `bottom` — границы по высоте, где 0 — самое широкое место чашки, а
+ * кромка накладки лежит на −11 мм. bottom: −99 означает «до самого низа», то есть
+ * открытый вырез в кромке.
+ */
+const CUTOUTS = [
+  {
+    id: 'arm',
+    label: 'дуга оголовья',
+    clock: 0,
+    width: 22,
+    top: 4,
+    bottom: -99,
+    radius: 5,
+    sides: ['left', 'right'],
+  },
+  {
+    // Digital Crown и кнопка шумоподавления стоят рядом на верхнем торце правой
+    // чашки. Точное расстояние между ними проверить не на чем, поэтому окно одно
+    // и с запасом: так доступны оба органа управления при любой их раскладке.
+    // Если промерить реальные позиции, окно легко разбить на два круглых.
+    // Между этим окном и вырезом под дугу остаётся перемычка около 10 мм: у́же
+    // делать не стоит, силикон в этом месте начинает заворачиваться.
+    id: 'controls',
+    label: 'Digital Crown + кнопка шума',
+    clock: -44, // верхний торец, ближе к затылочной стороне
+    width: 32,
+    top: 4,
+    bottom: -9.5,
+    radius: 6,
+    sides: ['right'],
+  },
+  {
+    id: 'port',
+    label: 'разъём зарядки',
+    clock: 180,
+    width: 18,
+    top: -2.5,
+    bottom: -99,
+    radius: 4,
+    sides: ['right'],
+  },
+  {
+    id: 'mic-top',
+    label: 'микрофон, верх',
+    clock: 68,
+    width: 9,
+    top: -1.5,
+    bottom: -6,
+    radius: 2.2,
+    sides: ['left', 'right'],
+    optional: true,
+  },
+  {
+    id: 'mic-bottom',
+    label: 'микрофон, низ',
+    clock: 128,
+    width: 9,
+    top: -4,
+    bottom: -8.5,
+    radius: 2.2,
+    sides: ['left', 'right'],
+    optional: true,
+  },
+];
+
+const QUALITY = { low: [256, 62], med: [416, 100], high: [704, 168] };
+const [NU, NS] = QUALITY[args.quality] ?? QUALITY.med;
+const WITH_MICS = !args['no-mics'];
+const SIDES = args.side === 'left' || args.side === 'right' ? [args.side] : ['right', 'left'];
 
 // ---------------------------------------------------------------------------
 // Штриховой шрифт. Каждая глифа — набор полилиний в квадрате кегля: базовая
@@ -100,21 +196,21 @@ const FONT = {
 };
 
 /** Раскладывает строку в отрезки-осевые линии штрихов (единицы — мм). */
-function layoutText(text, cfg) {
-  const glyphs = [...text.toUpperCase()].map((ch) => {
+function layoutText(cfg) {
+  const glyphs = [...cfg.text.toUpperCase()].map((ch) => {
     const g = FONT[ch];
     if (!g) throw new Error(`Нет глифы для «${ch}» — добавьте её в FONT`);
     return g;
   });
 
   const advance = glyphs.reduce((sum, g) => sum + g.adv + cfg.letterSpacing, 0) - cfg.letterSpacing;
-  // Кегль ужимается, если строка не влезает в отведённую ширину купола.
-  const em = Math.min(cfg.capHeight, cfg.maxTextWidth / advance);
+  // Кегль ужимается, если строка не влезает в отведённую ширину площадки.
+  const em = Math.min(cfg.capHeight, cfg.maxWidth / advance);
   const width = advance * em;
 
   const segments = [];
   let pen = -width / 2;
-  const baseline = cfg.textCenterY - em / 2;
+  const baseline = cfg.centerY - em / 2;
 
   for (const g of glyphs) {
     for (const stroke of g.strokes) {
@@ -130,20 +226,22 @@ function layoutText(text, cfg) {
   return { segments, em, width };
 }
 
-const TEXT = layoutText(CFG.text, CFG);
+const TEXT = layoutText(TEXT_CFG);
 
 // Габарит надписи с запасом на штрих — по нему быстро отсекаются точки сетки,
 // которые к буквам заведомо не относятся.
-const half = CFG.strokeWidth / 2 + 0.5;
-const BOX = TEXT.segments.reduce(
-  (b, [x0, y0, x1, y1]) => [
-    Math.min(b[0], x0, x1) - 0,
-    Math.min(b[1], y0, y1) - 0,
-    Math.max(b[2], x0, x1),
-    Math.max(b[3], y0, y1),
-  ],
-  [Infinity, Infinity, -Infinity, -Infinity],
-).map((v, i) => (i < 2 ? v - half : v + half));
+const PAD = TEXT_CFG.strokeWidth / 2 + 0.5;
+const BOX = TEXT.segments
+  .reduce(
+    (b, [x0, y0, x1, y1]) => [
+      Math.min(b[0], x0, x1),
+      Math.min(b[1], y0, y1),
+      Math.max(b[2], x0, x1),
+      Math.max(b[3], y0, y1),
+    ],
+    [Infinity, Infinity, -Infinity, -Infinity],
+  )
+  .map((v, i) => (i < 2 ? v - PAD : v + PAD));
 
 function distToSegment(px, py, x0, y0, x1, y1) {
   const dx = x1 - x0;
@@ -158,63 +256,102 @@ function distToSegment(px, py, x0, y0, x1, y1) {
 
 const smoothstep = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
-/** Высота рельефа надписи в точке (x, y) плоскости XY. */
+/** Высота рельефа надписи в точке (x, y) лицевой площадки. */
 function embossAt(x, y) {
   if (x < BOX[0] || x > BOX[2] || y < BOX[1] || y > BOX[3]) return 0;
 
-  const r = CFG.strokeWidth / 2;
+  const r = TEXT_CFG.strokeWidth / 2;
   let d = Infinity;
   for (const s of TEXT.segments) {
     const dist = distToSegment(x, y, s[0], s[1], s[2], s[3]);
     if (dist < d) d = dist;
-    if (d === 0) break;
   }
   if (d >= r) return 0;
 
   // Плоская вершина штриха и скруглённый спуск к поверхности — так буквы
   // печатаются без нависаний и приятно ловят свет. Фаска специально шире шага
   // сетки: иначе край буквы попадает между вершинами и получается «лесенка».
-  return CFG.embossHeight * smoothstep((1 - d / r) / CFG.embossEdge);
+  return TEXT_CFG.embossHeight * smoothstep((1 - d / r) / TEXT_CFG.embossEdge);
 }
 
 // ---------------------------------------------------------------------------
-// Поверхность накладки
+// Поверхность чашки
 // ---------------------------------------------------------------------------
 
-const A = CFG.outerWidth / 2;
-const B = CFG.outerDepth / 2;
+const A = CUP.width / 2;
+const B = CUP.height / 2;
+const RIM_Z = -FIT.coverSide;
 
-/** Профиль оболочки: s = 0 — макушка, s = 1 — нижняя кромка. */
-function profile(s) {
-  if (s <= DOME_SPLIT) {
-    const k = s / DOME_SPLIT;
-    return { rho: k, z: CFG.domeHeight * Math.pow(Math.max(0, 1 - k * k), 0.65) };
+/**
+ * Профиль чашки в координатах (доля радиуса, высота в мм): плоская площадка,
+ * скругление плеча, прямая боковина. Считается один раз и перепараметризуется
+ * по длине дуги, чтобы кольца сетки ложились равномерно.
+ */
+const PROFILE = (() => {
+  const pts = [];
+  const zTop = CUP.faceSag + CUP.shoulderDrop;
+  const push = (rho, z) => pts.push([rho, z]);
+
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60;
+    push(t * CUP.faceSpan, zTop - CUP.faceSag * t * t);
   }
-  const m = (s - DOME_SPLIT) / (1 - DOME_SPLIT);
-  return { rho: 1 + CFG.skirtFlare * m, z: -CFG.skirtHeight * m };
+  for (let i = 1; i <= 40; i++) {
+    const a = ((i / 40) * Math.PI) / 2;
+    push(CUP.faceSpan + (1 - CUP.faceSpan) * Math.sin(a), CUP.shoulderDrop * Math.cos(a));
+  }
+  for (let i = 1; i <= 40; i++) {
+    const m = i / 40;
+    push(1 - CUP.sideTaper * m, -FIT.coverSide * m);
+  }
+
+  // Длина дуги считается по среднему радиусу: эллипс отличается от окружности
+  // не настолько, чтобы это влияло на раскладку колец.
+  const scale = (A + B) / 2;
+  const arcs = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const dr = (pts[i][0] - pts[i - 1][0]) * scale;
+    const dz = pts[i][1] - pts[i - 1][1];
+    arcs.push(arcs[i - 1] + Math.hypot(dr, dz));
+  }
+  return { pts, arcs, total: arcs[arcs.length - 1] };
+})();
+
+/** Точка профиля по нормированной длине дуги s ∈ [0, 1]. */
+function profile(s) {
+  const target = s * PROFILE.total;
+  const { pts, arcs } = PROFILE;
+  let lo = 0;
+  let hi = arcs.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (arcs[mid] <= target) lo = mid;
+    else hi = mid;
+  }
+  const span = arcs[hi] - arcs[lo] || 1;
+  const t = (target - arcs[lo]) / span;
+  return {
+    rho: pts[lo][0] + (pts[hi][0] - pts[lo][0]) * t,
+    z: pts[lo][1] + (pts[hi][1] - pts[lo][1]) * t,
+  };
 }
 
-function basePoint(s, u) {
+function cupPoint(s, u) {
   const { rho, z } = profile(s);
   return [A * rho * Math.cos(u), B * rho * Math.sin(u), z];
 }
 
 const EPS = 1e-4;
 
-/** Нормаль считается численно: профиль кусочный, аналитика тут только мешает. */
-function normalAt(s, u) {
+/** Нормаль к чашке. ds × du смотрит наружу: s растёт от центра к кромке. */
+function cupNormal(s, u) {
   if (s < EPS) return [0, 0, 1];
-  const sa = Math.max(0, s - EPS);
-  const sb = Math.min(1, s + EPS);
-  const p0 = basePoint(sa, u);
-  const p1 = basePoint(sb, u);
-  const q0 = basePoint(s, u - EPS);
-  const q1 = basePoint(s, u + EPS);
+  const p0 = cupPoint(Math.max(0, s - EPS), u);
+  const p1 = cupPoint(Math.min(1, s + EPS), u);
+  const q0 = cupPoint(s, u - EPS);
+  const q1 = cupPoint(s, u + EPS);
   const ds = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
   const du = [q1[0] - q0[0], q1[1] - q0[1], q1[2] - q0[2]];
-  // ds × du смотрит наружу оболочки: s растёт от макушки к кромке, u — против
-  // часовой стрелки. Порядок здесь важен, от него зависит, куда выдавится
-  // надпись и в какую сторону отступает внутренняя поверхность.
   const n = [
     ds[1] * du[2] - ds[2] * du[1],
     ds[2] * du[0] - ds[0] * du[2],
@@ -224,96 +361,193 @@ function normalAt(s, u) {
   return [n[0] / len, n[1] / len, n[2] / len];
 }
 
-/** Толщина стенки: у кромки добавляется внутренний прижимной буртик. */
-function wallAt(s) {
-  const lipStart = 0.86;
-  const t = s <= lipStart ? 0 : (s - lipStart) / (1 - lipStart);
-  return CFG.wall + CFG.lip * smoothstep(t);
+/** Внутренний зазор: у кромки переходит в натяг, за счёт него накладка сидит. */
+function innerOffset(z) {
+  const grip = smoothstep((RIM_Z + FIT.beadSpan - z) / FIT.beadSpan);
+  return FIT.clearance - (FIT.clearance + FIT.bead) * grip;
 }
 
-/** Неравномерное распределение колец: купол с надписью гуще, юбка реже. */
-function sSamples(rows) {
-  const domeRows = Math.round(rows * 0.78);
-  const out = [];
-  for (let i = 1; i <= domeRows; i++) out.push((DOME_SPLIT * i) / domeRows);
-  for (let i = 1; i <= rows - domeRows; i++) {
-    out.push(DOME_SPLIT + ((1 - DOME_SPLIT) * i) / (rows - domeRows));
+// ---------------------------------------------------------------------------
+// Вырезы
+// ---------------------------------------------------------------------------
+
+const wrapPi = (a) => {
+  let v = a;
+  while (v > Math.PI) v -= 2 * Math.PI;
+  while (v < -Math.PI) v += 2 * Math.PI;
+  return v;
+};
+
+/** Длина дуги кромки от верхней точки чашки до параметра u, со знаком. */
+function rimArcLength(u) {
+  const from = Math.PI / 2;
+  const delta = wrapPi(u - from);
+  const steps = 400;
+  let len = 0;
+  for (let i = 0; i < steps; i++) {
+    const a = from + (delta * i) / steps;
+    const b = from + (delta * (i + 1)) / steps;
+    len += Math.hypot(A * (Math.cos(b) - Math.cos(a)), B * (Math.sin(b) - Math.sin(a)));
   }
-  return out;
+  return delta < 0 ? len : -len;
 }
 
-function buildMesh() {
+/**
+ * Готовит вырезы для одной стороны: положение «по циферблату» переводится в
+ * параметр эллипса, ширина в мм — в угловую через местный масштаб кромки.
+ */
+function prepareCutouts(side) {
+  const dir = side === 'right' ? 1 : -1;
+  return CUTOUTS.filter((c) => c.sides.includes(side))
+    .filter((c) => WITH_MICS || !c.optional)
+    .map((c) => {
+      const a = (c.clock * Math.PI) / 180;
+      const u0 = Math.atan2(Math.cos(a) / B, (Math.sin(a) * dir) / A);
+      const bottom = Math.max(c.bottom, RIM_Z - 8);
+      return {
+        ...c,
+        u0,
+        scale: Math.hypot(A * Math.sin(u0), B * Math.cos(u0)), // мм на радиан
+        zc: (c.top + bottom) / 2,
+        halfH: (c.top - bottom) / 2,
+        halfW: c.width / 2,
+        // Расстояние по кромке от верхней точки — по нему удобно сверяться с
+        // реальной чашкой линейкой.
+        rimArc: rimArcLength(u0),
+      };
+    });
+}
+
+/** Попадает ли точка поверхности в окно (скруглённый прямоугольник). */
+function isCut(cutouts, u, z) {
+  for (const c of cutouts) {
+    const t = wrapPi(u - c.u0) * c.scale;
+    const dx = Math.max(Math.abs(t) - (c.halfW - c.radius), 0);
+    const dy = Math.max(Math.abs(z - c.zc) - (c.halfH - c.radius), 0);
+    if (Math.hypot(dx, dy) <= c.radius) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Сетка
+// ---------------------------------------------------------------------------
+
+function faceNormal(a, b, c) {
+  const ux = b[0] - a[0];
+  const uy = b[1] - a[1];
+  const uz = b[2] - a[2];
+  const vx = c[0] - a[0];
+  const vy = c[1] - a[1];
+  const vz = c[2] - a[2];
+  const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+  const len = Math.hypot(n[0], n[1], n[2]) || 1;
+  return [n[0] / len, n[1] / len, n[2] / len];
+}
+
+/**
+ * Собирает накладку. Ячейки сетки, попавшие в вырезы, выбрасываются, а по краю
+ * оставшихся между наружной и внутренней оболочкой встаёт стенка — поэтому
+ * деталь с окнами остаётся замкнутой.
+ */
+function buildCover(side, { band = false } = {}) {
+  const cutouts = prepareCutouts(side);
   const verts = [];
   const tris = [];
   const push = (p) => verts.push(p) - 1;
 
-  const outerS = sSamples(NS_OUT);
-  const innerS = sSamples(NS_IN);
+  const sAt = (i) => i / NS;
+  const uAt = (j) => (2 * Math.PI * j) / NU;
 
-  // --- внешняя поверхность с рельефом --------------------------------------
-  const outerApex = push([0, 0, CFG.domeHeight + embossAt(0, 0)]);
-  const outerRings = outerS.map((s) => {
-    const ring = [];
+  const outer = new Int32Array((NS + 1) * NU).fill(-1);
+  const inner = new Int32Array((NS + 1) * NU).fill(-1);
+  const apexZ = profile(0).z;
+  const outerApex = push([0, 0, apexZ + FIT.clearance + FIT.wall + embossAt(0, 0)]);
+  const innerApex = push([0, 0, apexZ + innerOffset(apexZ)]);
+
+  for (let i = 1; i <= NS; i++) {
+    const s = sAt(i);
     for (let j = 0; j < NU; j++) {
-      const u = (2 * Math.PI * j) / NU;
-      const p = basePoint(s, u);
-      const h = s <= DOME_SPLIT ? embossAt(p[0], p[1]) : 0;
-      if (h > 0) {
-        const n = normalAt(s, u);
-        ring.push(push([p[0] + n[0] * h, p[1] + n[1] * h, p[2] + n[2] * h]));
+      const u = uAt(j);
+      const p = cupPoint(s, u);
+      const n = cupNormal(s, u);
+      // Надпись живёт только на лицевой площадке, до начала скругления плеча.
+      const h = p[2] > CUP.shoulderDrop - 0.01 ? embossAt(p[0], p[1]) : 0;
+      const out = FIT.clearance + FIT.wall + h;
+      const inn = innerOffset(p[2]);
+      outer[i * NU + j] = push([p[0] + n[0] * out, p[1] + n[1] * out, p[2] + n[2] * out]);
+      inner[i * NU + j] = push([p[0] + n[0] * inn, p[1] + n[1] * inn, p[2] + n[2] * inn]);
+    }
+  }
+
+  const outerAt = (i, j) => (i === 0 ? outerApex : outer[i * NU + j]);
+  const innerAt = (i, j) => (i === 0 ? innerApex : inner[i * NU + j]);
+
+  // Маска ячеек. Ячейка i лежит между кольцами i и i+1; нулевая — треугольная,
+  // она упирается в полюс.
+  const keep = new Uint8Array(NS * NU);
+  const centers = new Float64Array(NS * NU * 3);
+  for (let i = 0; i < NS; i++) {
+    const s = (sAt(i) + sAt(i + 1)) / 2;
+    for (let j = 0; j < NU; j++) {
+      const u = uAt(j) + Math.PI / NU;
+      const p = cupPoint(s, u);
+      // Шаблон для примерки — та же деталь, но обрезанная до пояска по кромке.
+      const cut = isCut(cutouts, u, p[2]) || (band && p[2] > 1.5);
+      keep[i * NU + j] = cut ? 0 : 1;
+      centers.set(p, (i * NU + j) * 3);
+    }
+  }
+
+  const kept = (i, j) => i >= 0 && i < NS && keep[i * NU + ((j + NU) % NU)] === 1;
+  const quad = (a, b, c, d) => tris.push([a, b, c], [a, c, d]);
+
+  for (let i = 0; i < NS; i++) {
+    for (let j = 0; j < NU; j++) {
+      if (!keep[i * NU + j]) continue;
+      const k = (j + 1) % NU;
+
+      // Наружная и внутренняя поверхности ячейки. Обход подобран так, чтобы
+      // нормали смотрели наружу детали; проверяется объёмом в validate().
+      if (i === 0) {
+        tris.push([outerApex, outerAt(1, j), outerAt(1, k)]);
+        tris.push([innerApex, innerAt(1, k), innerAt(1, j)]);
       } else {
-        ring.push(push(p));
+        quad(outerAt(i, j), outerAt(i + 1, j), outerAt(i + 1, k), outerAt(i, k));
+        quad(innerAt(i, k), innerAt(i + 1, k), innerAt(i + 1, j), innerAt(i, j));
+      }
+
+      // Стенка по краю выреза и по кромке накладки.
+      const cx = centers[(i * NU + j) * 3];
+      const cy = centers[(i * NU + j) * 3 + 1];
+      const cz = centers[(i * NU + j) * 3 + 2];
+      const edges = [
+        [i > 0 && !kept(i - 1, j), [i, j], [i, k]],
+        [!kept(i + 1, j), [i + 1, j], [i + 1, k]],
+        [!kept(i, j - 1), [i, j], [i + 1, j]],
+        [!kept(i, j + 1), [i, k], [i + 1, k]],
+      ];
+
+      for (const [isBoundary, ea, eb] of edges) {
+        if (!isBoundary) continue;
+        const oa = outerAt(ea[0], ea[1]);
+        const ob = outerAt(eb[0], eb[1]);
+        if (oa === ob) continue; // вырожденное ребро у полюса
+        const ia = innerAt(ea[0], ea[1]);
+        const ib = innerAt(eb[0], eb[1]);
+
+        // Направление «наружу материала» — от центра ячейки к середине ребра.
+        const refX = (verts[oa][0] + verts[ob][0]) / 2 - cx;
+        const refY = (verts[oa][1] + verts[ob][1]) / 2 - cy;
+        const refZ = (verts[oa][2] + verts[ob][2]) / 2 - cz;
+        const n = faceNormal(verts[oa], verts[ob], verts[ib]);
+        if (n[0] * refX + n[1] * refY + n[2] * refZ >= 0) quad(oa, ob, ib, ia);
+        else quad(ob, oa, ia, ib);
       }
     }
-    return ring;
-  });
-
-  // --- внутренняя поверхность (гладкая, эквидистанта наружной) --------------
-  const innerApex = push([0, 0, CFG.domeHeight - CFG.wall]);
-  const innerRings = innerS.map((s) => {
-    const ring = [];
-    const t = wallAt(s);
-    for (let j = 0; j < NU; j++) {
-      const u = (2 * Math.PI * j) / NU;
-      const p = basePoint(s, u);
-      const n = normalAt(s, u);
-      ring.push(push([p[0] - n[0] * t, p[1] - n[1] * t, p[2] - n[2] * t]));
-    }
-    return ring;
-  });
-
-  const quad = (a, b, c, d) => {
-    tris.push([a, b, c], [a, c, d]);
-  };
-
-  // Веер у макушки и лента квадов между кольцами. Обход подобран так, чтобы
-  // нормали треугольников смотрели наружу детали.
-  for (let j = 0; j < NU; j++) {
-    tris.push([outerApex, outerRings[0][j], outerRings[0][(j + 1) % NU]]);
-    tris.push([innerApex, innerRings[0][(j + 1) % NU], innerRings[0][j]]);
-  }
-  for (let i = 0; i < outerRings.length - 1; i++) {
-    for (let j = 0; j < NU; j++) {
-      const k = (j + 1) % NU;
-      quad(outerRings[i][j], outerRings[i + 1][j], outerRings[i + 1][k], outerRings[i][k]);
-    }
-  }
-  for (let i = 0; i < innerRings.length - 1; i++) {
-    for (let j = 0; j < NU; j++) {
-      const k = (j + 1) % NU;
-      quad(innerRings[i][k], innerRings[i + 1][k], innerRings[i + 1][j], innerRings[i][j]);
-    }
   }
 
-  // --- торец кромки ---------------------------------------------------------
-  const outerRim = outerRings[outerRings.length - 1];
-  const innerRim = innerRings[innerRings.length - 1];
-  for (let j = 0; j < NU; j++) {
-    const k = (j + 1) % NU;
-    quad(outerRim[j], innerRim[j], innerRim[k], outerRim[k]);
-  }
-
-  return { verts, tris };
+  return { verts, tris, cutouts };
 }
 
 /**
@@ -331,8 +565,7 @@ function validate({ verts, tris }) {
       const a = t[i];
       const b = t[(i + 1) % 3];
       const key = a < b ? `${a}_${b}` : `${b}_${a}`;
-      const dir = a < b ? 1 : -1;
-      seen.set(key, (seen.get(key) ?? 0) + dir);
+      seen.set(key, (seen.get(key) ?? 0) + (a < b ? 1 : -1));
     }
   }
   for (const balance of seen.values()) {
@@ -363,18 +596,6 @@ function validate({ verts, tris }) {
 // ---------------------------------------------------------------------------
 // Экспорт и превью
 // ---------------------------------------------------------------------------
-
-function faceNormal(a, b, c) {
-  const ux = b[0] - a[0];
-  const uy = b[1] - a[1];
-  const uz = b[2] - a[2];
-  const vx = c[0] - a[0];
-  const vy = c[1] - a[1];
-  const vz = c[2] - a[2];
-  const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
-  const len = Math.hypot(n[0], n[1], n[2]) || 1;
-  return [n[0] / len, n[1] / len, n[2] / len];
-}
 
 function toBinaryStl({ verts, tris }, title) {
   const buf = Buffer.alloc(84 + tris.length * 50);
@@ -442,15 +663,14 @@ function crc32(buf) {
 }
 
 /**
- * Софтверный рендер превью: z-буфер и плоское затенение. Без GPU и библиотек —
- * ровно столько, чтобы увидеть силуэт и блик на буквах.
+ * Софтверный рендер: z-буфер и затенение по усреднённым нормалям. Без GPU и
+ * библиотек — ровно столько, чтобы увидеть силуэт, вырезы и блик на буквах.
  */
 function renderView({ verts, tris, vn }, cam, outWidth, outHeight, ss = 2) {
   // Кадр рендерится в двойном разрешении и усредняется — дешёвое сглаживание.
   const width = outWidth * ss;
   const height = outHeight * ss;
-  const { eye, target, zoom = 1 } = cam;
-  const up = [0, 0, 1];
+  const { eye, target, up = [0, 0, 1], zoom = 1 } = cam;
 
   const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
   const norm = (v) => {
@@ -467,11 +687,9 @@ function renderView({ verts, tris, vn }, cam, outWidth, outHeight, ss = 2) {
 
   const project = (p) => {
     const d = sub(p, eye);
-    const cx = dot(d, xAxis);
-    const cy = dot(d, yAxis);
     const cz = -dot(d, zAxis); // глубина: положительная перед камерой
     if (cz <= 1) return null;
-    return [width / 2 + (focal * cx) / cz, height / 2 - (focal * cy) / cz, cz];
+    return [width / 2 + (focal * dot(d, xAxis)) / cz, height / 2 - (focal * dot(d, yAxis)) / cz, cz];
   };
 
   const rgb = Buffer.alloc(width * height * 3);
@@ -494,17 +712,16 @@ function renderView({ verts, tris, vn }, cam, outWidth, outHeight, ss = 2) {
   const fill = norm([0.8, -0.2, 0.25]);
   const view = norm(sub(eye, target));
   const base = [238, 150, 176]; // розовый силикон, как на референсе
-
   const halfVec = norm([key[0] + view[0], key[1] + view[1], key[2] + view[2]]);
 
   for (const [ia, ib, ic] of tris) {
     const a = verts[ia];
     const b = verts[ib];
     const c = verts[ic];
-    // Оболочка открыта снизу, поэтому грани не отбрасываются: изнанка просто
-    // подсвечивается по вывернутой нормали, а глубину разруливает z-буфер.
+    // Оболочка открыта снизу и в вырезах, поэтому грани не отбрасываются:
+    // изнанка подсвечивается по вывернутой нормали, глубину решает z-буфер.
     const inside = dot(faceNormal(a, b, c), norm(sub(eye, a))) <= 0;
-    const tint = inside ? 0.74 : 1; // внутренняя сторона в тени
+    const tint = inside ? 0.74 : 1;
 
     const pa = project(a);
     const pb = project(b);
@@ -546,8 +763,8 @@ function renderView({ verts, tris, vn }, cam, outWidth, outHeight, ss = 2) {
           nz = -nz;
         }
         const nd = (v) => nx * v[0] + ny * v[1] + nz * v[2];
-        const spec = Math.pow(Math.max(0, nd(halfVec)), 46) * 0.9;
-        const light = 0.34 + 0.7 * Math.max(0, nd(key)) + 0.22 * Math.max(0, nd(fill));
+        const spec = Math.pow(Math.max(0, nd(halfVec)), 46) * 0.5;
+        const light = 0.32 + 0.6 * Math.max(0, nd(key)) + 0.18 * Math.max(0, nd(fill));
         const shade = (ch) => Math.max(0, Math.min(255, (ch * light + 255 * spec) * tint));
 
         const o = idx * 3;
@@ -584,7 +801,7 @@ function renderView({ verts, tris, vn }, cam, outWidth, outHeight, ss = 2) {
   return out;
 }
 
-/** Нормали усредняются по вершинам: иначе купол гранёный, а буквы в фасетках. */
+/** Нормали усредняются по вершинам: иначе поверхность выглядит гранёной. */
 function vertexNormals({ verts, tris }) {
   const vn = new Float64Array(verts.length * 3);
   for (const [ia, ib, ic] of tris) {
@@ -604,16 +821,23 @@ function vertexNormals({ verts, tris }) {
   return vn;
 }
 
-/** Три ракурса в одну картинку: общий вид, вид сверху и изнанка с буртиком. */
-function renderPreview(mesh, tileW = 660, tileH = 640) {
-  const scene = { ...mesh, vn: vertexNormals(mesh) };
-  const cams = [
-    { eye: [52, -92, 66], target: [0, 0, 2], zoom: 1.5 },
-    { eye: [0, -26, 132], target: [0, 0, 6], zoom: 1.4 },
-    { eye: [46, -84, -62], target: [0, 0, -4], zoom: 1.5 },
+/**
+ * Пять кадров в одну картинку: общий вид, лицо с надписью, верхний торец с
+ * вырезами под дугу и органы управления, изнанка с прижимным бортиком и
+ * шаблон для примерки.
+ */
+function renderPreview(cover, gauge, tileW = 560, tileH = 620) {
+  const coverScene = { ...cover, vn: vertexNormals(cover) };
+  const gaugeScene = { ...gauge, vn: vertexNormals(gauge) };
+  const shots = [
+    [coverScene, { eye: [78, -96, 92], target: [0, 0, -2], zoom: 1.62 }],
+    [coverScene, { eye: [0, -10, 190], target: [0, 0, 4], up: [0, 1, 0], zoom: 1.7 }],
+    [coverScene, { eye: [58, 132, 96], target: [0, 26, -3], zoom: 1.7 }],
+    [coverScene, { eye: [70, -88, -84], target: [0, 0, -8], zoom: 1.62 }],
+    [gaugeScene, { eye: [72, -92, 78], target: [0, 0, -6], zoom: 1.7 }],
   ];
 
-  const tiles = cams.map((cam) => renderView(scene, cam, tileW, tileH));
+  const tiles = shots.map(([scene, cam]) => renderView(scene, cam, tileW, tileH));
   const width = tileW * tiles.length;
   const out = Buffer.alloc(width * tileH * 3);
   tiles.forEach((tile, i) => {
@@ -628,26 +852,61 @@ function renderPreview(mesh, tileW = 660, tileH = 640) {
 // ---------------------------------------------------------------------------
 
 const started = Date.now();
-const mesh = buildMesh();
-const { volume } = validate(mesh);
 await mkdir(OUT, { recursive: true });
 
-const stl = toBinaryStl(mesh, `Plastic Show ear-pad cover — ${CFG.text}`);
-await writeFile(`${OUT}plastic-show-earpad-cover.stl`, stl);
+const HALF_RIM = Math.abs(rimArcLength(-Math.PI / 2)); // полпериметра кромки
+const report = [];
 
-if (!args['no-preview']) {
-  await writeFile(`${OUT}plastic-show-earpad-cover.png`, renderPreview(mesh));
+for (const side of SIDES) {
+  const cover = buildCover(side);
+  const { volume } = validate(cover);
+  const stl = toBinaryStl(cover, `PLASTIC SHOW - AirPods Max cover, ${side}`);
+  await writeFile(`${OUT}airpods-max-cover-${side}.stl`, stl);
+
+  const gauge = buildCover(side, { band: true });
+  validate(gauge);
+  const gaugeStl = toBinaryStl(gauge, `PLASTIC SHOW - fit gauge, ${side}`);
+  await writeFile(`${OUT}airpods-max-cover-gauge-${side}.stl`, gaugeStl);
+
+  report.push(
+    `${side === 'right' ? 'Правая' : 'Левая'} накладка: ${cover.tris.length} треугольников, ` +
+      `${volume.toFixed(1)} см³ (≈ ${(volume * 1.15).toFixed(0)} г), ` +
+      `${(stl.length / 1048576).toFixed(1)} МБ; шаблон ${(gaugeStl.length / 1048576).toFixed(1)} МБ`,
+  );
+  for (const c of cover.cutouts) {
+    // Направление называется по циферблату, а не по модели: у левой накладки
+    // ось X зеркальная, и «вперёд» в её координатах — это затылок.
+    const forward = ((c.clock % 360) + 360) % 360 < 180;
+    const arc = Math.abs(c.rimArc);
+    const where =
+      arc < 3
+        ? 'на верхней точке'
+        : arc > HALF_RIM - 6
+          ? 'на нижней точке'
+          : `${forward ? 'вперёд' : 'назад'} на ${arc.toFixed(0)} мм`;
+    report.push(
+      `   ${c.label.padEnd(28)} по кромке ${(where + ',').padEnd(20)} окно ${String(c.width).padStart(2)} мм`,
+    );
+  }
+
+  if (side === SIDES[0] && !args['no-preview']) {
+    await writeFile(`${OUT}airpods-max-cover.png`, renderPreview(cover, gauge));
+  }
 }
 
 console.log(
   [
-    `Надпись:     «${CFG.text}» — ширина ${TEXT.width.toFixed(1)} мм, кегль ${TEXT.em.toFixed(1)} мм,`,
-    `             рельеф ${CFG.embossHeight} мм`,
-    `Габарит:     ${CFG.outerWidth} × ${CFG.outerDepth} × ${(CFG.domeHeight + CFG.skirtHeight).toFixed(1)} мм`,
-    `Стенка:      ${CFG.wall} мм, буртик по кромке +${CFG.lip} мм`,
-    `Сетка:       ${mesh.verts.length} вершин, ${mesh.tris.length} треугольников, замкнута`,
-    `Объём:       ${volume.toFixed(1)} см³ (≈ ${(volume * 1.15).toFixed(0)} г силикона)`,
-    `Файлы:       assets/3d/plastic-show-earpad-cover.stl (${(stl.length / 1048576).toFixed(1)} МБ)`,
-    `Время:       ${((Date.now() - started) / 1000).toFixed(1)} с`,
+    `Чашка:     ${CUP.width} × ${CUP.height} мм, боковина ${CUP.sideHeight} мм`,
+    `Накладка:  ${(CUP.width + 2 * (FIT.clearance + FIT.wall)).toFixed(1)} × ` +
+      `${(CUP.height + 2 * (FIT.clearance + FIT.wall)).toFixed(1)} мм снаружи, стенка ${FIT.wall} мм, ` +
+      `закрывает ${FIT.coverSide} мм боковины`,
+    `Посадка:   зазор ${FIT.clearance} мм, натяг по кромке ${FIT.bead} мм`,
+    `Надпись:   «${TEXT_CFG.text}» — ${TEXT.width.toFixed(1)} мм, кегль ${TEXT.em.toFixed(1)} мм, ` +
+      `рельеф ${TEXT_CFG.embossHeight} мм`,
+    ...report,
+    `Время:     ${((Date.now() - started) / 1000).toFixed(1)} с`,
+    '',
+    'Сначала напечатайте шаблон airpods-max-cover-gauge-*.stl и примерьте на чашку:',
+    'он проверяет и обхват, и совпадение вырезов. Размеры правятся в CUP / FIT / CUTOUTS.',
   ].join('\n'),
 );
