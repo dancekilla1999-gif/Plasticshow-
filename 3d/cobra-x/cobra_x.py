@@ -55,6 +55,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--window", type=float, default=22.0, help="полуширина верхнего окна, мм (0 — без окна)")
     p.add_argument("--window-top", type=float, default=1.0, help="до какой высоты Z поднимается окно, мм")
 
+    # стиль
+    p.add_argument("--style", choices=["cobra", "roses"], default="cobra",
+                   help="cobra — потёкший металл, roses — розы на шипастой лозе")
+    p.add_argument("--roses", type=float, default=0.70,
+                   help="доля узлов лозы, где распускается роза")
+    p.add_argument("--rose-size", type=float, default=8.0, help="радиус розы, мм")
+    p.add_argument("--petal", type=float, default=1.4, help="толщина лепестка, мм")
+    p.add_argument("--leaves", type=int, default=22, help="число листьев на лозе")
+    p.add_argument("--thorns", type=int, default=38, help="число шипов на лозе")
+
     # рисунок
     p.add_argument("--cell", type=float, default=15.0, help="средний размер ячейки сети, мм")
     p.add_argument("--strut", type=float, default=2.4, help="средний радиус жилы, мм")
@@ -75,6 +85,31 @@ def build_parser() -> argparse.ArgumentParser:
                    help="формат файлов модели")
     p.add_argument("--preview", action="store_true", help="отрисовать PNG-превью")
     return p
+
+
+ROSES_PRESET = {
+    "cell": 26.0,      # крупные проёмы, как у лозы
+    "strut": 2.9,      # толстая гладкая лоза
+    "strut_var": 0.30,
+    "prune": 0.12,
+    "blend": 1.2,
+    "node_blob": 1.0,
+    "drips": 0,
+    "rib_core": 1.4,
+    "thickness": 3.2,
+    "rim": 3.4,
+}
+
+
+def apply_style(args, argv):
+    """Стиль roses меняет умолчания; всё, что задано явно, остаётся."""
+    if args.style != "roses":
+        return args
+    given = {a.lstrip("-").replace("-", "_").split("=")[0] for a in argv if a.startswith("--")}
+    for key, value in ROSES_PRESET.items():
+        if key not in given:
+            setattr(args, key, value)
+    return args
 
 
 # --------------------------------------------------------------------------
@@ -388,7 +423,7 @@ def build_web(args, phis, s_tab, pt_tab, rng):
             rr = np.linspace(node_r[idx] * 0.72, args.strut * rng.uniform(1.1, 1.5), 4)
             for i in range(3):
                 segments.append((pts3[i], pts3[i + 1], rr[i], rr[i + 1]))
-    return segments, seeds, edges
+    return segments, seeds, edges, fixed
 
 
 def connected_edges(edges, n_nodes):
@@ -410,6 +445,185 @@ def connected_edges(edges, n_nodes):
     vals, counts = np.unique(roots[np.unique(edges)], return_counts=True)
     main = vals[np.argmax(counts)]
     return edges[used == main]
+
+
+# --------------------------------------------------------------------------
+# розы, листья и шипы
+# --------------------------------------------------------------------------
+
+def decor_placements(args, seeds, edges, fixed, rng):
+    """Где на лозе распускаются розы, где сидят листья и шипы (в развёртке)."""
+    roses, leaves, thorns = [], [], []
+    if args.style != "roses":
+        return roses, leaves, thorns
+
+    def in_window(p):
+        """Верхнее окно под дужку и колесо — там декор не растёт."""
+        r = float(np.hypot(*p))
+        return r > 30.0 and p[1] > 0.0 and abs(p[0]) < 0.5 * r
+
+    nodes = [n for n in np.unique(edges) if not in_window(seeds[n])]
+    k = max(int(round(len(nodes) * args.roses)), 1)
+    for n in rng.choice(nodes, size=min(k, len(nodes)), replace=False):
+        p = seeds[n].copy()
+        if fixed[n]:
+            # роза на кромке съезжает внутрь, иначе лепестки свисают за поясок
+            r = float(np.hypot(*p))
+            p *= max(1.0 - 5.0 / max(r, 1e-9), 0.0)
+        roses.append((p, float(rng.uniform(0.82, 1.18))))
+
+    def on_edge(lo=0.18, hi=0.82):
+        for _ in range(12):
+            e = edges[rng.integers(len(edges))]
+            t = rng.uniform(lo, hi)
+            p = seeds[e[0]] * (1 - t) + seeds[e[1]] * t
+            if in_window(p):
+                continue
+            d = seeds[e[1]] - seeds[e[0]]
+            return p, d / max(np.linalg.norm(d), 1e-9)
+        return p, np.array([1.0, 0.0])
+
+    for _ in range(args.leaves):
+        p, d = on_edge()
+        leaves.append((p, d, float(rng.uniform(0.85, 1.25)),
+                       float(rng.choice([-1.0, 1.0])) * float(rng.uniform(0.7, 1.4))))
+    for _ in range(args.thorns):
+        p, d = on_edge(0.12, 0.88)
+        thorns.append((p, d, float(rng.uniform(0.8, 1.3)),
+                       float(rng.uniform(-1.0, 1.0))))
+    return roses, leaves, thorns
+
+
+def frames_on_surface(disc_pts, disc_dirs, phis, s_tab, pt_tab, d_cup, origin, voxel, level):
+    """
+    Точки развёртки -> положение на поверхности + локальный базис.
+
+    Возвращает центры, нормали и касательные вдоль лозы: по ним ставятся
+    розы, листья и шипы.
+    """
+    if len(disc_pts) == 0:
+        return np.zeros((0, 3)), np.zeros((0, 3)), np.zeros((0, 3))
+    eps = 0.6
+    base = np.asarray(disc_pts, dtype=float)
+    ahead = base + np.asarray(disc_dirs, dtype=float) * eps
+
+    p0 = disc_to_surface(base[:, 0], base[:, 1], phis, s_tab, pt_tab)
+    p1 = disc_to_surface(ahead[:, 0], ahead[:, 1], phis, s_tab, pt_tab)
+    p0 = snap_to_surface(p0, d_cup, origin, voxel, level)
+    p1 = snap_to_surface(p1, d_cup, origin, voxel, level)
+
+    gz, gy, gx = np.gradient(d_cup, voxel)
+
+    def sample(vol, p):
+        return ndimage.map_coordinates(vol, ((p - origin) / voxel).T[::-1],
+                                       order=1, mode="nearest")
+
+    n = np.stack([sample(gx, p0), sample(gy, p0), sample(gz, p0)], axis=1)
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-9)
+    t = p1 - p0
+    t -= n * np.einsum("ij,ij->i", t, n)[:, None]
+    t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-9)
+    return p0, n, t
+
+
+def local_axes(normal, tangent):
+    """Матрица мир -> локальные координаты (строки: x, y, z=нормаль)."""
+    z = normal / max(np.linalg.norm(normal), 1e-9)
+    x = tangent - z * float(tangent @ z)
+    if np.linalg.norm(x) < 1e-6:
+        x = np.array([1.0, 0.0, 0.0]) - z * z[0]
+    x /= max(np.linalg.norm(x), 1e-9)
+    y = np.cross(z, x)
+    return np.stack([x, y, z], axis=0)
+
+
+def rose_sdf(Xl, Yl, Zl, size, petal_t):
+    """
+    Роза: три яруса лепестков вокруг бутона, ось цветка — локальная Z.
+
+    Лепесток — вытянутый кусок сферической оболочки радиуса Rp, вогнутой
+    стороной к оси. Центр сферы отнесён на Rp + зазор, поэтому лепесток
+    обнимает середину, а не затягивает её. Пятно лепестка эллиптическое:
+    широкое по завитку (alpha_up) и узкое по кругу (alpha_side) — между
+    соседними лепестками остаётся канавка, иначе ярус слипается в блин.
+    Каждый лепесток довёрнут по завитку, ярусы раскрываются наружу.
+    """
+    d = np.full_like(Xl, 30.0)
+    axis = np.array([0.0, 0.0, 1.0])
+    # (радиус, зазор, сколько, поворот яруса, наклон, alpha_up, alpha_side)
+    layers = ((0.42, 0.06, 4, 0.00, 0.30, 0.92, 0.40),
+              (0.60, 0.24, 5, 0.62, 0.78, 0.92, 0.38),
+              (0.76, 0.42, 6, 1.24, 1.12, 0.86, 0.38))
+    for rp_f, gap_f, count, phase, tilt, a_up, a_side in layers:
+        Rp = size * rp_f
+        D = Rp + size * gap_f
+        for i in range(count):
+            phi = phase + i * 2.0 * np.pi / count
+            dirv = np.array([np.sin(tilt) * np.cos(phi),
+                             np.sin(tilt) * np.sin(phi),
+                             np.cos(tilt)])
+            u = -dirv
+            up = axis - u * float(axis @ u)
+            if np.linalg.norm(up) < 1e-6:
+                up = np.array([1.0, 0.0, 0.0]) - u * u[0]
+            up /= np.linalg.norm(up)
+            side = np.cross(u, up)
+            # лёгкий доворот лепестка — завиток идёт по спирали
+            tw = 0.28
+            up, side = (up * math.cos(tw) + side * math.sin(tw),
+                        side * math.cos(tw) - up * math.sin(tw))
+
+            step = 1.0 + 0.06 * ((i % 2) * 2 - 1)   # соседние лепестки чуть разной высоты
+            cx, cy, cz = dirv * (D * step)
+            px, py, pz = Xl - cx, Yl - cy, Zl - cz
+            r = np.sqrt(px * px + py * py + pz * pz) + 1e-9
+            qx, qy, qz = px / r, py / r, pz / r
+            shell = np.abs(r - Rp) - petal_t / 2.0
+
+            k_up = np.arcsin(np.clip(qx * up[0] + qy * up[1] + qz * up[2], -1, 1)) / a_up
+            k_sd = np.arcsin(np.clip(qx * side[0] + qy * side[1] + qz * side[2], -1, 1)) / a_side
+            front = qx * u[0] + qy * u[1] + qz * u[2]
+            patch = (np.sqrt(k_up ** 2 + k_sd ** 2) - 1.0) * (Rp * a_side)
+            patch = np.maximum(patch, -front * Rp)      # только ближняя сторона сферы
+
+            petal = smax(shell, patch, 0.28)
+            d = smin(d, petal, 0.20)
+    bud = np.sqrt(Xl ** 2 + Yl ** 2 + (Zl - size * 0.14) ** 2) - size * 0.20
+    return smin(d, bud, 0.28)
+
+
+def leaf_sdf(Xl, Yl, Zl, length, width, thick):
+    """Лист: заострённая линза с центральной жилкой."""
+    e = ((np.abs(Xl) / length) ** 1.8
+         + (np.abs(Yl) / width) ** 1.8
+         + (np.abs(Zl) / thick) ** 2.0) ** (1.0 / 1.8)
+    blade = (e - 1.0) * (thick * 1.6)
+    v = np.clip(Xl / (length * 0.92), -1.0, 1.0)
+    vein = np.sqrt(Yl ** 2 + (Zl - thick * 0.35) ** 2) - (0.55 - 0.35 * np.abs(v)) * width * 0.28
+    vein = np.maximum(vein, np.abs(Xl) - length * 0.92)
+    return smin(blade, vein, 0.35)
+
+
+def stamp_local(field, origin, voxel, center, R, half, fn, blend):
+    """Считает локальный примитив в его системе координат и вливает в поле."""
+    nz, ny, nx = field.shape
+    lo = center - half
+    hi = center + half
+    i0 = np.maximum(((lo - origin) / voxel).astype(int), 0)
+    i1 = np.minimum(((hi - origin) / voxel).astype(int) + 2, [nx, ny, nz])
+    if np.any(i1 <= i0):
+        return
+    xs = origin[0] + np.arange(i0[0], i1[0]) * voxel
+    ys = origin[1] + np.arange(i0[1], i1[1]) * voxel
+    zs = origin[2] + np.arange(i0[2], i1[2]) * voxel
+    Z, Y, X = np.meshgrid(zs, ys, xs, indexing="ij")
+    dx, dy, dz = X - center[0], Y - center[1], Z - center[2]
+    Xl = R[0, 0] * dx + R[0, 1] * dy + R[0, 2] * dz
+    Yl = R[1, 0] * dx + R[1, 1] * dy + R[1, 2] * dz
+    Zl = R[2, 0] * dx + R[2, 1] * dy + R[2, 2] * dz
+    d = fn(Xl, Yl, Zl).astype(np.float32)
+    sub = field[i0[2]:i1[2], i0[1]:i1[1], i0[0]:i1[0]]
+    field[i0[2]:i1[2], i0[1]:i1[1], i0[0]:i1[0]] = smin(sub, d, blend)
 
 
 # --------------------------------------------------------------------------
@@ -534,7 +748,8 @@ def build_field(args, mode: str, rng):
     # ось жил идёт чуть выше поверхности чашки: сечение получается круглым
     core = clr + args.rib_core
     phis, s_tab, pt_tab = unwrap_tables(cup, core, args.skirt)
-    segments, seeds, edges = build_web(args, phis, s_tab, pt_tab, rng)
+    segments, seeds, edges, fixed = build_web(args, phis, s_tab, pt_tab, rng)
+    roses, leaves, thorns = decor_placements(args, seeds, edges, fixed, rng)
 
     # притягиваем узлы сегментов к точной средней поверхности
     allp = np.array([p for seg in segments for p in (seg[0], seg[1])])
@@ -545,14 +760,67 @@ def build_field(args, mode: str, rng):
     ]
     print(f"    сеть: {len(seeds)} узлов, {len(edges)} рёбер, {len(segments)} сегментов")
 
+    # положение и базис для всего декора считаем заранее: стебли роз и шипы
+    # должны попасть в общий растр вместе с лозой, иначе цветок улетает отдельно
+    rose_frames = leaf_frames = None
+    if roses:
+        rose_frames = frames_on_surface(
+            [r[0] for r in roses], [np.array([1.0, 0.0]) for _ in roses],
+            phis, s_tab, pt_tab, d_cup, origin, vx, core)
+    if leaves:
+        leaf_frames = frames_on_surface(
+            [l[0] for l in leaves], [l[1] for l in leaves],
+            phis, s_tab, pt_tab, d_cup, origin, vx, core)
+    if thorns:
+        pts, nrm, tan = frames_on_surface(
+            [t[0] for t in thorns], [t[1] for t in thorns],
+            phis, s_tab, pt_tab, d_cup, origin, vx, core)
+        for (p, base, scale, lean), c, n, t in zip(thorns, pts, nrm, tan):
+            side = np.cross(n, t)
+            direction = n * 0.72 + t * (0.5 * lean) + side * (0.3 * lean)
+            direction /= max(np.linalg.norm(direction), 1e-9)
+            segments.append((c, c + direction * (5.4 * scale),
+                             1.5 * scale, 0.32 * scale))
+
+    rose_spots = []
+    if rose_frames is not None:
+        for (p, scale), c, n, t in zip(roses, *rose_frames):
+            size = args.rose_size * scale
+            centre = c + n * (args.strut * 0.75 + size * 0.36)
+            # стебель: роза всегда приросла к лозе
+            segments.append((c, centre, args.strut * 0.62, size * 0.30))
+            rose_spots.append((centre, local_axes(n, t), size))
+
     t0 = time.time()
     web = segment_field(d_cup.shape, origin, vx, segments, args.blend)
-    print(f"    жилы за {time.time() - t0:.1f} c")
 
-    # жилы ограничены только поверхностью чашки — сверху остаются круглыми
+    for centre, R, size in rose_spots:
+        stamp_local(web, origin, vx, centre, R, np.full(3, size * 2.0),
+                    lambda X, Y, Z, sz=size: rose_sdf(X, Y, Z, sz, args.petal),
+                    0.25)
+
+    if leaf_frames is not None:
+        for (p, d0, scale, lean), c, n, t in zip(leaves, *leaf_frames):
+            side = np.cross(n, t)
+            axis = t * math.cos(lean) + side * math.sin(lean)
+            axis = axis + n * 0.28                     # кончик чуть приподнят
+            axis /= max(np.linalg.norm(axis), 1e-9)
+            L, W, T = 8.0 * scale, 3.2 * scale, 0.95
+            stamp_local(web, origin, vx,
+                        c + axis * (L * 0.40) + n * 0.22,
+                        local_axes(n, axis), np.full(3, L * 1.2),
+                        lambda X, Y, Z, a=L, b=W, c_=T: leaf_sdf(X, Y, Z, a, b, c_),
+                        0.45)
+    print(f"    лоза, розы и шипы за {time.time() - t0:.1f} c")
+
+    # жилы и декор ограничены только поверхностью чашки: сверху они остаются
+    # круглыми, снизу срезаны по офсету — там плоская посадочная площадка
     r_top = args.rib_core + args.strut * (1.0 + args.strut_var / 2.0) * 1.5 + 0.5
+    if args.style == "roses":
+        r_top = max(r_top, args.rib_core + args.strut + args.rose_size * 1.9 + 1.0)
     band_rib = np.maximum(inner - d_cup, d_cup - (clr + r_top)).astype(np.float32)
     band_rib = np.maximum(band_rib, (z_bot - Z).astype(np.float32))
+
     part = smax(web, band_rib, 0.45)
 
     # сплошной поясок по нижнему краю юбки
@@ -831,16 +1099,18 @@ def make_part(args, mode, seed, out_dir, base_name, mirror=False):
 
 
 def main():
-    args = build_parser().parse_args()
+    import sys
+    args = apply_style(build_parser().parse_args(), sys.argv[1:])
     import os
     os.makedirs(args.out, exist_ok=True)
 
+    name = "cobra-x" if args.style == "cobra" else "roses"
     if args.side in ("right", "both"):
-        make_part(args, "case", args.seed, args.out, "cobra-x_right")
+        make_part(args, "case", args.seed, args.out, f"{name}_right")
     if args.side in ("left", "both"):
-        make_part(args, "case", args.seed + 101, args.out, "cobra-x_left", mirror=True)
+        make_part(args, "case", args.seed + 101, args.out, f"{name}_left", mirror=True)
     if args.side == "gauge":
-        make_part(args, "gauge", args.seed, args.out, "cobra-x_fit-gauge")
+        make_part(args, "gauge", args.seed, args.out, f"{name}_fit-gauge")
 
 
 if __name__ == "__main__":
