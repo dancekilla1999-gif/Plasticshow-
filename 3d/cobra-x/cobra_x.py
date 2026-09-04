@@ -44,11 +44,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     # посадка
     p.add_argument("--clearance", type=float, default=0.35, help="зазор до чашки, мм")
-    p.add_argument("--thickness", type=float, default=2.6, help="толщина пояска и юбки, мм")
-    p.add_argument("--rib-core", type=float, default=0.7,
+    p.add_argument("--thickness", type=float, default=3.0, help="толщина пояска и юбки, мм")
+    p.add_argument("--rib-core", type=float, default=1.05,
                    help="подъём оси жилы над чашкой, мм (больше — жила круглее)")
     p.add_argument("--skirt", type=float, default=7.0, help="глубина захода юбки на борт, мм")
-    p.add_argument("--rim", type=float, default=2.6, help="высота сплошного пояска по краю, мм")
+    p.add_argument("--rim", type=float, default=3.0, help="высота сплошного пояска по краю, мм")
     p.add_argument("--lip", type=float, default=0.45, help="буртик-защёлка внутрь, мм (0 — без защёлки)")
 
     # окно под дужку / колесо / кнопку
@@ -56,12 +56,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--window-top", type=float, default=1.0, help="до какой высоты Z поднимается окно, мм")
 
     # рисунок
-    p.add_argument("--cell", type=float, default=12.5, help="средний размер ячейки сети, мм")
-    p.add_argument("--strut", type=float, default=1.9, help="средний радиус жилы, мм")
-    p.add_argument("--strut-var", type=float, default=0.55, help="разброс радиуса жил, 0..1")
-    p.add_argument("--prune", type=float, default=0.34, help="доля выброшенных рёбер (крупные ячейки)")
-    p.add_argument("--drips", type=int, default=14, help="число висящих «капель»")
-    p.add_argument("--blend", type=float, default=0.9, help="радиус сглаживания стыков, мм")
+    p.add_argument("--cell", type=float, default=15.0, help="средний размер ячейки сети, мм")
+    p.add_argument("--strut", type=float, default=2.4, help="средний радиус жилы, мм")
+    p.add_argument("--strut-var", type=float, default=0.62, help="разброс радиуса жил, 0..1")
+    p.add_argument("--prune", type=float, default=0.28, help="доля выброшенных рёбер (крупные ячейки)")
+    p.add_argument("--drips", type=int, default=18, help="число висящих «капель»")
+    p.add_argument("--blend", type=float, default=1.45,
+                   help="радиус наплыва в стыках, мм — металл «натекает» в узлах")
+    p.add_argument("--node-blob", type=float, default=1.18,
+                   help="во сколько раз узел толще жилы (наплыв металла)")
     p.add_argument("--seed", type=int, default=7, help="зерно генератора рисунка")
 
     # сетка/вывод
@@ -359,20 +362,30 @@ def build_web(args, phis, s_tab, pt_tab, rng):
         for i in range(sub):
             segments.append((pts3[i], pts3[i + 1], radii[i], radii[i + 1]))
 
+    # наплыв металла в узлах: шар чуть толще сходящихся жил
+    used_nodes = np.unique(edges)
+    for idx in used_nodes:
+        p = disc_to_surface(seeds[idx:idx + 1, 0], seeds[idx:idx + 1, 1],
+                            phis, s_tab, pt_tab)[0]
+        r = node_r[idx] * args.node_blob
+        segments.append((p, p.copy(), r, r))
+
     # висящие «капли» — короткий отросток с утолщением на конце
     inner_nodes = np.flatnonzero(~fixed)
     if args.drips > 0 and len(inner_nodes) > 4:
         picks = rng.choice(inner_nodes, size=min(args.drips, len(inner_nodes)), replace=False)
         for idx in picks:
-            ang = rng.uniform(0, 2 * np.pi)
-            tip = seeds[idx] + np.array([math.cos(ang), math.sin(ang)]) * rng.uniform(4.0, 8.5)
+            # потёк идёт преимущественно наружу — как стекающий по куполу металл
+            base = math.atan2(seeds[idx][1], seeds[idx][0])
+            ang = base + rng.uniform(-0.9, 0.9)
+            tip = seeds[idx] + np.array([math.cos(ang), math.sin(ang)]) * rng.uniform(5.0, 10.0)
             phi_t = np.mod(math.atan2(tip[1], tip[0]), 2 * np.pi)
             kt = int(round(phi_t / (2 * np.pi) * len(phis))) % len(phis)
             if np.hypot(*tip) > s_rim[kt] - 1.2:
                 continue
             path = np.array([seeds[idx] * (1 - t) + tip * t for t in np.linspace(0, 1, 4)])
             pts3 = disc_to_surface(path[:, 0], path[:, 1], phis, s_tab, pt_tab)
-            rr = np.linspace(node_r[idx] * 0.75, args.strut * rng.uniform(1.05, 1.45), 4)
+            rr = np.linspace(node_r[idx] * 0.72, args.strut * rng.uniform(1.1, 1.5), 4)
             for i in range(3):
                 segments.append((pts3[i], pts3[i + 1], rr[i], rr[i + 1]))
     return segments, seeds, edges
@@ -440,10 +453,11 @@ def segment_field(shape, origin, voxel, segments, blend):
 
         v = p1 - p0
         L2 = float(v @ v)
-        if L2 < 1e-9:
-            continue
         wx, wy, wz = X - p0[0], Y - p0[1], Z - p0[2]
-        t = np.clip((wx * v[0] + wy * v[1] + wz * v[2]) / L2, 0.0, 1.0)
+        if L2 < 1e-9:
+            t = np.zeros_like(wx)          # вырожденный сегмент — шар в узле
+        else:
+            t = np.clip((wx * v[0] + wy * v[1] + wz * v[2]) / L2, 0.0, 1.0)
         dx = wx - t * v[0]
         dy = wy - t * v[1]
         dz = wz - t * v[2]
@@ -564,19 +578,42 @@ def field_to_mesh(field, origin, voxel):
     return verts.astype(np.float32), faces.astype(np.int32)
 
 
-def smooth_mesh(verts, faces, iterations=2, factor=0.5):
-    """Лапласово сглаживание — снимает лесенку вокселей."""
+def smooth_mesh(verts, faces, iterations=3, lam=0.58, mu=-0.60):
+    """
+    Сглаживание Тобина (lambda/mu): снимает воксельную лесенку и оставляет
+    поверхность непрерывной, но, в отличие от лапласова, не ужимает деталь —
+    жилы не худеют, а блики на них ложатся ровно.
+    """
     if iterations <= 0:
         return verts
     e = np.vstack([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
     e = np.vstack([e, e[:, ::-1]])
     counts = np.bincount(e[:, 0], minlength=len(verts)).astype(np.float32)
     counts[counts == 0] = 1.0
-    v = verts.copy()
-    for _ in range(iterations):
+    v = verts.astype(np.float64)
+
+    def step(v, w):
         acc = np.zeros_like(v)
         np.add.at(acc, e[:, 0], v[e[:, 1]])
-        v = v + factor * (acc / counts[:, None] - v)
+        return v + w * (acc / counts[:, None] - v)
+
+    for _ in range(iterations):
+        v = step(v, lam)
+        v = step(v, mu)
+    return v.astype(np.float32)
+
+
+def place_on_bed(verts):
+    """Ставит деталь на стол: пояском в Z=0, по центру стола в X/Y.
+
+    Ориентация уже печатная — купол вверх, поясок вниз, — поэтому в слайсере
+    модель не надо ни крутить, ни опускать.
+    """
+    v = verts.copy()
+    lo, hi = v.min(axis=0), v.max(axis=0)
+    v[:, 0] -= (lo[0] + hi[0]) / 2.0
+    v[:, 1] -= (lo[1] + hi[1]) / 2.0
+    v[:, 2] -= lo[2]
     return v
 
 
@@ -772,9 +809,10 @@ def make_part(args, mode, seed, out_dir, base_name, mirror=False):
     verts, faces, dropped = largest_component(verts, faces)
     if dropped:
         print(f"    отброшено {dropped} вершин несвязанных кусочков")
-    verts = smooth_mesh(verts, faces, iterations=3, factor=0.45)
+    verts = smooth_mesh(verts, faces, iterations=3)
     if mirror:
         verts, faces = mirror_x(verts, faces)
+    verts = place_on_bed(verts)
     print(f"    марш-кубы + сглаживание за {time.time() - t0:.1f} c")
 
     st = mesh_stats(verts, faces)
