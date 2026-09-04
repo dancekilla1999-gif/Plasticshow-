@@ -1,0 +1,809 @@
+#!/usr/bin/env python3
+"""
+Cobra X — параметрическая накладка-«паутина» на чашки AirPods Max.
+
+Модель строится как поле расстояний (SDF) на воксельной сетке и вынимается
+марширующими кубами, поэтому геометрия получается замкнутой, водонепроницаемой
+и пригодной для печати без ремонта в сторонних программах.
+
+Состав детали:
+  * органическая сеть «оплавленных» жил на внешней поверхности чашки;
+  * юбка по борту с посадочным пояском (rim) и внутренним буртиком-защёлкой;
+  * окно сверху под дужку, колесо Digital Crown и кнопку шумоподавления.
+
+Все размеры чашки вынесены в параметры: под свой экземпляр наушников
+достаточно поменять --cup-w / --cup-h / --clearance и перегенерировать.
+"""
+
+from __future__ import annotations
+
+import argparse
+import math
+import struct
+import time
+
+import numpy as np
+from scipy import ndimage
+from scipy.spatial import Delaunay
+from skimage import measure
+
+
+# --------------------------------------------------------------------------
+# параметры чашки AirPods Max (по внешнему алюминиевому колпаку)
+# --------------------------------------------------------------------------
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Генератор Cobra X для AirPods Max")
+
+    # геометрия чашки
+    p.add_argument("--cup-w", type=float, default=84.0, help="ширина чашки, мм (ось X)")
+    p.add_argument("--cup-h", type=float, default=98.0, help="высота чашки, мм (ось Y)")
+    p.add_argument("--cup-n", type=float, default=2.35, help="показатель суперэллипса контура")
+    p.add_argument("--dome", type=float, default=9.0, help="выпуклость внешней поверхности, мм")
+    p.add_argument("--cup-depth", type=float, default=16.0, help="глубина боковой стенки чашки, мм")
+
+    # посадка
+    p.add_argument("--clearance", type=float, default=0.35, help="зазор до чашки, мм")
+    p.add_argument("--thickness", type=float, default=2.6, help="толщина пояска и юбки, мм")
+    p.add_argument("--rib-core", type=float, default=0.7,
+                   help="подъём оси жилы над чашкой, мм (больше — жила круглее)")
+    p.add_argument("--skirt", type=float, default=7.0, help="глубина захода юбки на борт, мм")
+    p.add_argument("--rim", type=float, default=2.6, help="высота сплошного пояска по краю, мм")
+    p.add_argument("--lip", type=float, default=0.45, help="буртик-защёлка внутрь, мм (0 — без защёлки)")
+
+    # окно под дужку / колесо / кнопку
+    p.add_argument("--window", type=float, default=22.0, help="полуширина верхнего окна, мм (0 — без окна)")
+    p.add_argument("--window-top", type=float, default=1.0, help="до какой высоты Z поднимается окно, мм")
+
+    # рисунок
+    p.add_argument("--cell", type=float, default=12.5, help="средний размер ячейки сети, мм")
+    p.add_argument("--strut", type=float, default=1.9, help="средний радиус жилы, мм")
+    p.add_argument("--strut-var", type=float, default=0.55, help="разброс радиуса жил, 0..1")
+    p.add_argument("--prune", type=float, default=0.34, help="доля выброшенных рёбер (крупные ячейки)")
+    p.add_argument("--drips", type=int, default=14, help="число висящих «капель»")
+    p.add_argument("--blend", type=float, default=0.9, help="радиус сглаживания стыков, мм")
+    p.add_argument("--seed", type=int, default=7, help="зерно генератора рисунка")
+
+    # сетка/вывод
+    p.add_argument("--voxel", type=float, default=0.45, help="шаг воксельной сетки, мм")
+    p.add_argument("--side", choices=["left", "right", "both", "gauge"], default="both")
+    p.add_argument("--out", default="stl", help="каталог вывода")
+    p.add_argument("--format", choices=["stl", "3mf", "both"], default="both",
+                   help="формат файлов модели")
+    p.add_argument("--preview", action="store_true", help="отрисовать PNG-превью")
+    return p
+
+
+# --------------------------------------------------------------------------
+# вспомогательное
+# --------------------------------------------------------------------------
+
+def smin(a, b, k):
+    """Гладкое объединение (polynomial smooth-min)."""
+    if k <= 0:
+        return np.minimum(a, b)
+    h = np.clip(0.5 + 0.5 * (b - a) / k, 0.0, 1.0)
+    return b * (1.0 - h) + a * h - k * h * (1.0 - h)
+
+
+def smax(a, b, k):
+    """Гладкое пересечение."""
+    return -smin(-a, -b, k)
+
+
+def sdf_from_mask(mask: np.ndarray, voxel: float) -> np.ndarray:
+    """Знаковое евклидово расстояние до маски, в миллиметрах."""
+    out = ndimage.distance_transform_edt(~mask, sampling=voxel)
+    inn = ndimage.distance_transform_edt(mask, sampling=voxel)
+    return (out - inn).astype(np.float32)
+
+
+def round_mask(mask: np.ndarray, voxel: float, radius: float) -> np.ndarray:
+    """Морфологическое открытие сферой — скругляет выпуклые рёбра."""
+    if radius <= 0:
+        return mask
+    eroded = sdf_from_mask(mask, voxel) <= -radius
+    if not eroded.any():
+        return mask
+    return sdf_from_mask(eroded, voxel) <= radius
+
+
+# --------------------------------------------------------------------------
+# форма чашки
+# --------------------------------------------------------------------------
+
+class Cup:
+    """Внешняя поверхность чашки: суперэллипс в плане + купол + вертикальный борт."""
+
+    def __init__(self, args):
+        self.a = args.cup_w / 2.0
+        self.b = args.cup_h / 2.0
+        self.n = args.cup_n
+        self.rise = args.dome
+        self.depth = args.cup_depth
+
+    def q(self, x, y):
+        """Нормированный радиус: 1.0 — кромка чашки."""
+        return (np.abs(x / self.a) ** self.n + np.abs(y / self.b) ** self.n) ** (1.0 / self.n)
+
+    def top(self, q):
+        """Высота купола на нормированном радиусе q."""
+        t = np.clip(1.0 - np.clip(q, 0.0, 1.0) ** 2.5, 0.0, 1.0)
+        return self.rise * np.sqrt(t)
+
+    def point(self, phi, q):
+        """Точка поверхности по направлению phi и нормированному радиусу q."""
+        c, s = np.cos(phi), np.sin(phi)
+        m = (np.abs(c) ** self.n + np.abs(s) ** self.n) ** (1.0 / self.n)
+        x = q * self.a * c / m
+        y = q * self.b * s / m
+        return x, y
+
+    def mask(self, X, Y, Z):
+        q = self.q(X, Y)
+        return (q <= 1.0) & (Z <= self.top(q)) & (Z >= -self.depth)
+
+
+def unwrap_tables(cup: Cup, offset: float, skirt: float, n_phi: int = 256):
+    """
+    Развёртка средней поверхности накладки в плоский диск.
+
+    Для каждого направления phi считаем длину дуги s от макушки вдоль меридиана
+    (купол, затем борт). Возвращаем таблицы s(phi, i) и 3D-точек, чтобы уметь
+    переводить точку плоского диска (U, V) в точку на поверхности.
+    """
+    phis = np.linspace(0.0, 2.0 * np.pi, n_phi, endpoint=False)
+    qs = np.linspace(0.0, 1.0, 700)
+
+    s_tab, pt_tab = [], []
+    for phi in phis:
+        xs, ys = cup.point(phi, qs)
+        zs = cup.top(qs)
+        # борт вниз по стенке — ровно до нижней кромки юбки
+        z_wall = np.linspace(0.0, -skirt, 120)[1:]
+        xw = np.full_like(z_wall, xs[-1])
+        yw = np.full_like(z_wall, ys[-1])
+
+        px = np.concatenate([xs, xw])
+        py = np.concatenate([ys, yw])
+        pz = np.concatenate([zs, z_wall])
+
+        # смещение наружу по нормали меридиана — грубая заготовка,
+        # точное положение потом добирается притяжением к изоповерхности SDF
+        nrm = np.hypot(np.hypot(np.gradient(px), np.gradient(py)), np.gradient(pz))
+        nrm[nrm == 0] = 1e-9
+        tx, ty, tz = np.gradient(px) / nrm, np.gradient(py) / nrm, np.gradient(pz) / nrm
+        rad = np.hypot(px, py)
+        rad[rad == 0] = 1e-9
+        # нормаль меридиана в плоскости (радиус, z)
+        ur, uz = px / rad, py / rad
+        t_rad = tx * ur + ty * uz
+        nx = -tz * ur
+        ny = -tz * uz
+        nz = t_rad
+        px = px + offset * nx
+        py = py + offset * ny
+        pz = pz + offset * nz
+
+        d = np.sqrt(np.diff(px) ** 2 + np.diff(py) ** 2 + np.diff(pz) ** 2)
+        s = np.concatenate([[0.0], np.cumsum(d)])
+
+        s_tab.append(s)
+        pt_tab.append(np.stack([px, py, pz], axis=1))
+
+    return phis, np.array(s_tab), np.array(pt_tab)
+
+
+def disc_to_surface(U, V, phis, s_tab, pt_tab):
+    """(U, V) плоского диска -> 3D-точка на средней поверхности."""
+    phi = np.mod(np.arctan2(V, U), 2.0 * np.pi)
+    s = np.hypot(U, V)
+    k = np.rint(phi / (2.0 * np.pi) * len(phis)).astype(int) % len(phis)
+
+    pts = np.empty((len(U), 3))
+    for i in range(len(U)):
+        row = s_tab[k[i]]
+        j = np.searchsorted(row, s[i])
+        j = min(max(j, 1), len(row) - 1)
+        t = (s[i] - row[j - 1]) / max(row[j] - row[j - 1], 1e-9)
+        pts[i] = pt_tab[k[i], j - 1] * (1 - t) + pt_tab[k[i], j] * t
+    return pts
+
+
+# --------------------------------------------------------------------------
+# рисунок сети
+# --------------------------------------------------------------------------
+
+def poisson_disc(radius: float, r_max: float, rng, k: int = 24, preset=None):
+    """Выборка Бридсона в круге радиуса r_max; preset — уже зафиксированные точки."""
+    cell = radius / math.sqrt(2.0)
+    n = int(math.ceil(2 * r_max / cell)) + 1
+    grid = -np.ones((n, n), dtype=int)
+    pts, active = [], []
+
+    def add(p):
+        pts.append(p)
+        active.append(len(pts) - 1)
+        gx = int((p[0] + r_max) / cell)
+        gy = int((p[1] + r_max) / cell)
+        grid[gx, gy] = len(pts) - 1
+
+    def ok(p):
+        if p[0] ** 2 + p[1] ** 2 > r_max ** 2:
+            return False
+        gx = int((p[0] + r_max) / cell)
+        gy = int((p[1] + r_max) / cell)
+        for i in range(max(gx - 2, 0), min(gx + 3, n)):
+            for j in range(max(gy - 2, 0), min(gy + 3, n)):
+                idx = grid[i, j]
+                if idx >= 0:
+                    q = pts[idx]
+                    if (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2 < radius ** 2:
+                        return False
+        return True
+
+    n_preset = 0
+    if preset is not None and len(preset):
+        for q in preset:
+            add(np.asarray(q, dtype=float))
+        n_preset = len(preset)
+    add(np.array([0.0, 0.0]))
+    while active:
+        i = active[rng.integers(len(active))]
+        base = pts[i]
+        placed = False
+        for _ in range(k):
+            ang = rng.uniform(0, 2 * np.pi)
+            rad = radius * (1.0 + rng.random())
+            cand = base + np.array([math.cos(ang), math.sin(ang)]) * rad
+            if ok(cand):
+                add(cand)
+                placed = True
+                break
+        if not placed:
+            active.remove(i)
+    return np.array(pts), n_preset
+
+
+def build_web(args, phis, s_tab, pt_tab, rng):
+    """Строит список сегментов (p0, p1, r0, r1) органической сети."""
+    s_rim = np.array([row[-1] for row in s_tab])   # длина дуги до нижней кромки юбки
+    r_max = float(s_rim.max())
+
+    # опорное кольцо узлов ровно по нижней кромке: сеть гарантированно
+    # срастается со сплошным пояском по всему периметру
+    n_ring = max(int(round(2 * np.pi * float(s_rim.mean()) / args.cell)), 8)
+    ring_phi = np.linspace(0.0, 2 * np.pi, n_ring, endpoint=False)
+    ring_phi = ring_phi + rng.uniform(-0.35, 0.35, n_ring) * (2 * np.pi / n_ring)
+    kk = np.rint(ring_phi / (2 * np.pi) * len(phis)).astype(int) % len(phis)
+    ring_s = s_rim[kk] - 0.6
+    ring = np.stack([ring_s * np.cos(ring_phi), ring_s * np.sin(ring_phi)], axis=1)
+
+    pts, n_fixed = poisson_disc(args.cell, r_max, rng, preset=ring)
+
+    # выбрасываем внутренние точки, вышедшие за фактическую кромку
+    phi = np.mod(np.arctan2(pts[:, 1], pts[:, 0]), 2 * np.pi)
+    k = np.rint(phi / (2 * np.pi) * len(phis)).astype(int) % len(phis)
+    keep = np.hypot(pts[:, 0], pts[:, 1]) <= s_rim[k] - 0.4
+    keep[:n_fixed] = True
+    seeds = pts[keep]
+
+    fixed = np.zeros(len(seeds), dtype=bool)
+    fixed[:n_fixed] = True
+
+    # релаксация Ллойда только для внутренних узлов — кромка остаётся на месте
+    for _ in range(3):
+        tri = Delaunay(seeds)
+        acc = seeds.copy()
+        cnt = np.ones(len(seeds))
+        for simplex in tri.simplices:
+            c = seeds[simplex].mean(axis=0)
+            for v in simplex:
+                acc[v] += c
+                cnt[v] += 1
+        relaxed = acc / cnt[:, None]
+        seeds = np.where(fixed[:, None], seeds, relaxed)
+
+    tri = Delaunay(seeds)
+    edges = set()
+    for simplex in tri.simplices:
+        for i in range(3):
+            u, v = simplex[i], simplex[(i + 1) % 3]
+            edges.add((min(u, v), max(u, v)))
+    edges = np.array(sorted(edges))
+
+    # хорды снаружи кромки Delaunay соединяет напрямую — такие рёбра убираем
+    mid = (seeds[edges[:, 0]] + seeds[edges[:, 1]]) / 2.0
+    mphi = np.mod(np.arctan2(mid[:, 1], mid[:, 0]), 2 * np.pi)
+    mk = np.rint(mphi / (2 * np.pi) * len(phis)).astype(int) % len(phis)
+    inside = np.hypot(mid[:, 0], mid[:, 1]) <= s_rim[mk] - 0.2
+    length = np.linalg.norm(seeds[edges[:, 0]] - seeds[edges[:, 1]], axis=1)
+    edges = edges[inside & (length < args.cell * 2.1)]
+
+    # прореживание: ячейки становятся крупнее и неправильнее, граф остаётся связным
+    degree = np.zeros(len(seeds), dtype=int)
+    for u, v in edges:
+        degree[u] += 1
+        degree[v] += 1
+    drop = np.zeros(len(edges), dtype=bool)
+    target = int(len(edges) * args.prune)
+    dropped = 0
+    for e in rng.permutation(len(edges)):
+        if dropped >= target:
+            break
+        u, v = edges[e]
+        if degree[u] > 2 and degree[v] > 2:
+            drop[e] = True
+            degree[u] -= 1
+            degree[v] -= 1
+            dropped += 1
+    edges = edges[~drop]
+    edges = connected_edges(edges, len(seeds))
+
+    node_r = args.strut * (1.0 + args.strut_var * (rng.random(len(seeds)) - 0.5))
+
+    sub = 6
+    ts = np.linspace(0.0, 1.0, sub + 1)
+    segments = []
+    for u, v in edges:
+        pu, pv = seeds[u], seeds[v]
+        d = pv - pu
+        ln = float(np.hypot(*d))
+        nrm = np.array([-d[1], d[0]]) / max(ln, 1e-9)
+        # квадратичная кривая: жила идёт дугой, а не по линейке
+        ctrl = (pu + pv) / 2.0 + nrm * ln * rng.uniform(-0.16, 0.16)
+        curve = np.array([(1 - t) ** 2 * pu + 2 * (1 - t) * t * ctrl + t ** 2 * pv for t in ts])
+        pts3 = disc_to_surface(curve[:, 0], curve[:, 1], phis, s_tab, pt_tab)
+        radii = node_r[u] * (1 - ts) + node_r[v] * ts
+        radii = radii * (0.78 + 0.22 * np.abs(2 * ts - 1) ** 1.4)
+        for i in range(sub):
+            segments.append((pts3[i], pts3[i + 1], radii[i], radii[i + 1]))
+
+    # висящие «капли» — короткий отросток с утолщением на конце
+    inner_nodes = np.flatnonzero(~fixed)
+    if args.drips > 0 and len(inner_nodes) > 4:
+        picks = rng.choice(inner_nodes, size=min(args.drips, len(inner_nodes)), replace=False)
+        for idx in picks:
+            ang = rng.uniform(0, 2 * np.pi)
+            tip = seeds[idx] + np.array([math.cos(ang), math.sin(ang)]) * rng.uniform(4.0, 8.5)
+            phi_t = np.mod(math.atan2(tip[1], tip[0]), 2 * np.pi)
+            kt = int(round(phi_t / (2 * np.pi) * len(phis))) % len(phis)
+            if np.hypot(*tip) > s_rim[kt] - 1.2:
+                continue
+            path = np.array([seeds[idx] * (1 - t) + tip * t for t in np.linspace(0, 1, 4)])
+            pts3 = disc_to_surface(path[:, 0], path[:, 1], phis, s_tab, pt_tab)
+            rr = np.linspace(node_r[idx] * 0.75, args.strut * rng.uniform(1.05, 1.45), 4)
+            for i in range(3):
+                segments.append((pts3[i], pts3[i + 1], rr[i], rr[i + 1]))
+    return segments, seeds, edges
+
+
+def connected_edges(edges, n_nodes):
+    """Оставляет только рёбра наибольшей связной компоненты графа."""
+    parent = np.arange(n_nodes)
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for u, v in edges:
+        ru, rv = find(u), find(v)
+        if ru != rv:
+            parent[rv] = ru
+    roots = np.array([find(i) for i in range(n_nodes)])
+    used = np.array([find(u) for u, _ in edges])
+    vals, counts = np.unique(roots[np.unique(edges)], return_counts=True)
+    main = vals[np.argmax(counts)]
+    return edges[used == main]
+
+
+# --------------------------------------------------------------------------
+# поле и сетка
+# --------------------------------------------------------------------------
+
+def snap_to_surface(pts, d_cup, origin, voxel, level, iters=3):
+    """Притягивает точки к изоповерхности d_cup = level по градиенту поля."""
+    gz, gy, gx = np.gradient(d_cup, voxel)
+
+    def sample(vol, p):
+        idx = ((p - origin) / voxel).T[::-1]  # -> (z, y, x)
+        return ndimage.map_coordinates(vol, idx, order=1, mode="nearest")
+
+    p = pts.copy()
+    for _ in range(iters):
+        d = sample(d_cup, p)
+        n = np.stack([sample(gx, p), sample(gy, p), sample(gz, p)], axis=1)
+        ln = np.linalg.norm(n, axis=1, keepdims=True)
+        ln[ln < 1e-6] = 1e-6
+        p = p - (d - level)[:, None] * n / ln
+    return p
+
+
+def segment_field(shape, origin, voxel, segments, blend):
+    """Поле расстояний до сети конических капсул (только вокруг жил)."""
+    field = np.full(shape, 40.0, dtype=np.float32)
+    nz, ny, nx = shape
+    for p0, p1, r0, r1 in segments:
+        rmax = max(r0, r1) + blend + 1.2
+        lo = np.minimum(p0, p1) - rmax
+        hi = np.maximum(p0, p1) + rmax
+        i0 = np.maximum(((lo - origin) / voxel).astype(int), 0)
+        i1 = np.minimum(((hi - origin) / voxel).astype(int) + 2, [nx, ny, nz])
+        if np.any(i1 <= i0):
+            continue
+        xs = origin[0] + np.arange(i0[0], i1[0]) * voxel
+        ys = origin[1] + np.arange(i0[1], i1[1]) * voxel
+        zs = origin[2] + np.arange(i0[2], i1[2]) * voxel
+        Z, Y, X = np.meshgrid(zs, ys, xs, indexing="ij")
+
+        v = p1 - p0
+        L2 = float(v @ v)
+        if L2 < 1e-9:
+            continue
+        wx, wy, wz = X - p0[0], Y - p0[1], Z - p0[2]
+        t = np.clip((wx * v[0] + wy * v[1] + wz * v[2]) / L2, 0.0, 1.0)
+        dx = wx - t * v[0]
+        dy = wy - t * v[1]
+        dz = wz - t * v[2]
+        d = np.sqrt(dx * dx + dy * dy + dz * dz) - (r0 + t * (r1 - r0))
+
+        sub = field[i0[2]:i1[2], i0[1]:i1[1], i0[0]:i1[0]]
+        field[i0[2]:i1[2], i0[1]:i1[1], i0[0]:i1[0]] = smin(sub, d.astype(np.float32), blend)
+    return field
+
+
+def box_sdf(X, Y, Z, center, half):
+    dx = np.abs(X - center[0]) - half[0]
+    dy = np.abs(Y - center[1]) - half[1]
+    dz = np.abs(Z - center[2]) - half[2]
+    outside = np.sqrt(np.maximum(dx, 0) ** 2 + np.maximum(dy, 0) ** 2 + np.maximum(dz, 0) ** 2)
+    inside = np.minimum(np.maximum(np.maximum(dx, dy), dz), 0.0)
+    return outside + inside
+
+
+def cut_window(field, args, cup, X, Y, Z, z_bot):
+    """Вырезает верхнее окно под дужку, колесо Digital Crown и кнопку."""
+    if args.window <= 0:
+        return field
+    z_top = args.window_top
+    z_lo = z_bot - 6.0
+    win = box_sdf(X, Y, Z, (0.0, cup.b + 8.0, (z_top + z_lo) / 2.0),
+                  (args.window, 14.0, (z_top - z_lo) / 2.0))
+    return smax(field, -win.astype(np.float32), 0.6)
+
+
+def build_field(args, mode: str, rng):
+    """Собирает итоговое SDF детали. mode: 'case' или 'gauge'."""
+    cup = Cup(args)
+    clr, thk = args.clearance, args.thickness
+    pad = clr + thk + 3.0
+
+    x_hi = cup.a + pad
+    y_hi = cup.b + pad
+    z_hi = cup.rise + pad
+    z_lo = -(args.skirt + pad + 2.0)
+
+    vx = args.voxel
+    xs = np.arange(-x_hi, x_hi + vx, vx)
+    ys = np.arange(-y_hi, y_hi + vx, vx)
+    zs = np.arange(z_lo, z_hi + vx, vx)
+    origin = np.array([xs[0], ys[0], zs[0]])
+    Z, Y, X = np.meshgrid(zs, ys, xs, indexing="ij")
+
+    t0 = time.time()
+    cup_mask = cup.mask(X, Y, Z)
+    cup_mask = round_mask(cup_mask, vx, 2.0)
+    d_cup = sdf_from_mask(cup_mask, vx)
+    print(f"    поле чашки {d_cup.shape} за {time.time() - t0:.1f} c")
+
+    # внутренняя граница с буртиком-защёлкой у самого низа юбки
+    z_bot = -args.skirt
+    inner = np.full_like(d_cup, clr)
+    if args.lip > 0:
+        w = np.clip((z_bot + 2.6 - Z) / 2.2, 0.0, 1.0).astype(np.float32)
+        inner = inner - args.lip * w
+    outer = clr + thk
+
+    band = np.maximum(inner - d_cup, d_cup - outer).astype(np.float32)
+    # обрезаем сверху и снизу по высоте детали
+    band = np.maximum(band, (z_bot - Z).astype(np.float32))
+
+    if mode == "gauge":
+        gauge = np.maximum(inner - d_cup, d_cup - (clr + 1.2)).astype(np.float32)
+        gauge = np.maximum(gauge, (z_bot - Z).astype(np.float32))
+        gauge = np.maximum(gauge, (Z - 1.5).astype(np.float32))
+        gauge = cut_window(gauge, args, cup, X, Y, Z, z_bot)
+        return gauge, origin, vx, (X, Y, Z)
+
+    # ось жил идёт чуть выше поверхности чашки: сечение получается круглым
+    core = clr + args.rib_core
+    phis, s_tab, pt_tab = unwrap_tables(cup, core, args.skirt)
+    segments, seeds, edges = build_web(args, phis, s_tab, pt_tab, rng)
+
+    # притягиваем узлы сегментов к точной средней поверхности
+    allp = np.array([p for seg in segments for p in (seg[0], seg[1])])
+    allp = snap_to_surface(allp, d_cup, origin, vx, core)
+    segments = [
+        (allp[2 * i], allp[2 * i + 1], segments[i][2], segments[i][3])
+        for i in range(len(segments))
+    ]
+    print(f"    сеть: {len(seeds)} узлов, {len(edges)} рёбер, {len(segments)} сегментов")
+
+    t0 = time.time()
+    web = segment_field(d_cup.shape, origin, vx, segments, args.blend)
+    print(f"    жилы за {time.time() - t0:.1f} c")
+
+    # жилы ограничены только поверхностью чашки — сверху остаются круглыми
+    r_top = args.rib_core + args.strut * (1.0 + args.strut_var / 2.0) * 1.5 + 0.5
+    band_rib = np.maximum(inner - d_cup, d_cup - (clr + r_top)).astype(np.float32)
+    band_rib = np.maximum(band_rib, (z_bot - Z).astype(np.float32))
+    part = smax(web, band_rib, 0.45)
+
+    # сплошной поясок по нижнему краю юбки
+    ring = np.maximum(band, (Z - (z_bot + args.rim)).astype(np.float32))
+    part = smin(part, ring, 0.6)
+
+    # окно сверху: дужка, Digital Crown, кнопка
+    part = cut_window(part, args, cup, X, Y, Z, z_bot)
+
+    return part.astype(np.float32), origin, vx, (X, Y, Z)
+
+
+# --------------------------------------------------------------------------
+# сетка -> STL
+# --------------------------------------------------------------------------
+
+def field_to_mesh(field, origin, voxel):
+    padded = np.pad(field, 1, mode="constant", constant_values=10.0)
+    verts, faces, _, _ = measure.marching_cubes(padded, level=0.0, spacing=(voxel,) * 3)
+    verts = verts - voxel  # компенсация паддинга
+    # marching_cubes отдаёт (z, y, x)
+    verts = verts[:, ::-1] + origin
+    return verts.astype(np.float32), faces.astype(np.int32)
+
+
+def smooth_mesh(verts, faces, iterations=2, factor=0.5):
+    """Лапласово сглаживание — снимает лесенку вокселей."""
+    if iterations <= 0:
+        return verts
+    e = np.vstack([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
+    e = np.vstack([e, e[:, ::-1]])
+    counts = np.bincount(e[:, 0], minlength=len(verts)).astype(np.float32)
+    counts[counts == 0] = 1.0
+    v = verts.copy()
+    for _ in range(iterations):
+        acc = np.zeros_like(v)
+        np.add.at(acc, e[:, 0], v[e[:, 1]])
+        v = v + factor * (acc / counts[:, None] - v)
+    return v
+
+
+def mirror_x(verts, faces):
+    v = verts.copy()
+    v[:, 0] *= -1.0
+    return v, faces[:, ::-1].copy()
+
+
+def write_stl(path, verts, faces, name="cobra-x"):
+    tri = verts[faces]
+    n = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    ln = np.linalg.norm(n, axis=1, keepdims=True)
+    ln[ln == 0] = 1.0
+    n = (n / ln).astype(np.float32)
+    with open(path, "wb") as f:
+        f.write(name.encode("ascii", "ignore").ljust(80, b"\0"))
+        f.write(struct.pack("<I", len(faces)))
+        data = np.zeros((len(faces), 12), dtype=np.float32)
+        data[:, 0:3] = n
+        data[:, 3:6] = tri[:, 0]
+        data[:, 6:9] = tri[:, 1]
+        data[:, 9:12] = tri[:, 2]
+        buf = np.zeros((len(faces), 50), dtype=np.uint8)
+        buf[:, :48] = data.view(np.uint8).reshape(len(faces), 48)
+        f.write(buf.tobytes())
+
+
+def largest_component(verts, faces):
+    """Оставляет наибольшую связную компоненту (страховка от плавающих кусочков)."""
+    parent = np.arange(len(verts))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for tri in faces:
+        r = [find(int(t)) for t in tri]
+        for x in r[1:]:
+            if x != r[0]:
+                parent[x] = r[0]
+    roots = np.array([find(i) for i in range(len(verts))])
+    vals, counts = np.unique(roots, return_counts=True)
+    main = vals[np.argmax(counts)]
+    keep_v = roots == main
+    dropped = int((~keep_v).sum())
+    if dropped == 0:
+        return verts, faces, 0
+    remap = -np.ones(len(verts), dtype=np.int64)
+    remap[keep_v] = np.arange(keep_v.sum())
+    keep_f = keep_v[faces[:, 0]]
+    return verts[keep_v], remap[faces[keep_f]].astype(np.int32), dropped
+
+
+def write_3mf(path, verts, faces, name="cobra-x"):
+    """3MF — тот же меш, но в 5-6 раз компактнее STL; понимают все слайсеры."""
+    import zipfile
+
+    v = "".join(
+        '<vertex x="%.3f" y="%.3f" z="%.3f"/>' % tuple(p) for p in verts.astype(float)
+    )
+    t = "".join(
+        '<triangle v1="%d" v2="%d" v3="%d"/>' % tuple(f) for f in faces.astype(int)
+    )
+    model = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<model unit="millimeter" xml:lang="en-US" '
+        'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
+        f'<metadata name="Title">{name}</metadata>'
+        '<resources><object id="1" type="model" name="' + name + '"><mesh>'
+        f"<vertices>{v}</vertices><triangles>{t}</triangles>"
+        "</mesh></object></resources>"
+        '<build><item objectid="1"/></build></model>'
+    )
+    rels = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rel0" Target="/3D/3dmodel.model" '
+        'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>'
+    )
+    ctypes = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>'
+        "</Types>"
+    )
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        z.writestr("[Content_Types].xml", ctypes)
+        z.writestr("_rels/.rels", rels)
+        z.writestr("3D/3dmodel.model", model)
+
+
+def mesh_stats(verts, faces):
+    tri = verts[faces]
+    v = np.einsum("ij,ij->i", tri[:, 0], np.cross(tri[:, 1], tri[:, 2])) / 6.0
+    return {
+        "tris": len(faces),
+        "volume_cm3": abs(v.sum()) / 1000.0,
+        "bbox": verts.max(axis=0) - verts.min(axis=0),
+    }
+
+
+# --------------------------------------------------------------------------
+# превью
+# --------------------------------------------------------------------------
+
+def render_preview(path, verts, faces, size=900, yaw=-0.55, pitch=0.60, samples=26):
+    """Мягкий рендер «хрома»: сплат точек в z-буфер + освещение по нормалям глубины."""
+    rng = np.random.default_rng(0)
+    tri = verts[faces]
+    pts = [tri[:, 0], tri[:, 1], tri[:, 2]]
+    for _ in range(samples):
+        w = rng.random((len(faces), 3))
+        w /= w.sum(axis=1, keepdims=True)
+        pts.append((tri * w[:, :, None]).sum(axis=1))
+    p = np.vstack(pts)
+
+    c = p - (verts.max(axis=0) + verts.min(axis=0)) / 2.0
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    cp, sp = math.cos(pitch), math.sin(pitch)
+    x = c[:, 0] * cy + c[:, 1] * sy
+    y1 = -c[:, 0] * sy + c[:, 1] * cy
+    y = y1 * cp - c[:, 2] * sp
+    z = y1 * sp + c[:, 2] * cp
+
+    span = max(np.ptp(x), np.ptp(y)) * 1.12
+    px = ((x / span + 0.5) * size).astype(int)
+    py = ((-y / span + 0.5) * size).astype(int)
+    ok = (px >= 0) & (px < size) & (py >= 0) & (py < size)
+    px, py, z = px[ok], py[ok], z[ok]
+
+    zbuf = np.full(size * size, 1e9, dtype=np.float32)
+    np.minimum.at(zbuf, py * size + px, -z.astype(np.float32))
+    zbuf = zbuf.reshape(size, size)
+    mask = zbuf < 1e8
+    depth = np.where(mask, zbuf, zbuf[mask].max() if mask.any() else 0.0)
+    depth = ndimage.grey_closing(depth, size=3)
+    depth = ndimage.gaussian_filter(depth, 1.1)
+
+    gy, gx = np.gradient(depth)
+    scale = 4.0
+    nx, ny, nz = -gx * scale, -gy * scale, np.ones_like(depth)
+    ln = np.sqrt(nx * nx + ny * ny + nz * nz)
+    nx, ny, nz = nx / ln, ny / ln, nz / ln
+
+    light = np.array([-0.45, -0.55, 0.70])
+    light /= np.linalg.norm(light)
+    lam = np.clip(nx * light[0] + ny * light[1] + nz * light[2], 0, 1)
+    spec = np.clip(lam, 0, 1) ** 42
+    fres = (1.0 - np.clip(nz, 0, 1)) ** 2.2
+
+    img = 0.20 + 0.62 * lam + 0.85 * spec + 0.28 * fres
+    img = np.clip(img, 0, 1)
+    rgb = np.stack([img * 0.98, img * 0.99, np.clip(img * 1.02, 0, 1)], axis=-1)
+    bg = np.array([0.10, 0.10, 0.11])
+    m = ndimage.binary_closing(mask, np.ones((3, 3)))
+    out = np.where(m[..., None], rgb, bg)
+    out = (np.clip(out, 0, 1) * 255).astype(np.uint8)
+
+    _write_png(path, out)
+
+
+def _write_png(path, rgb):
+    import zlib
+    h, w, _ = rgb.shape
+    raw = b"".join(b"\0" + rgb[i].tobytes() for i in range(h))
+
+    def chunk(tag, data):
+        return (struct.pack(">I", len(data)) + tag + data
+                + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF))
+
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n")
+        f.write(chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)))
+        f.write(chunk(b"IDAT", zlib.compress(raw, 6)))
+        f.write(chunk(b"IEND", b""))
+
+
+# --------------------------------------------------------------------------
+# main
+# --------------------------------------------------------------------------
+
+def make_part(args, mode, seed, out_dir, base_name, mirror=False):
+    rng = np.random.default_rng(seed)
+    print(f"  [{base_name}]")
+    field, origin, vx, _ = build_field(args, mode, rng)
+
+    t0 = time.time()
+    verts, faces = field_to_mesh(field, origin, vx)
+    verts, faces, dropped = largest_component(verts, faces)
+    if dropped:
+        print(f"    отброшено {dropped} вершин несвязанных кусочков")
+    verts = smooth_mesh(verts, faces, iterations=3, factor=0.45)
+    if mirror:
+        verts, faces = mirror_x(verts, faces)
+    print(f"    марш-кубы + сглаживание за {time.time() - t0:.1f} c")
+
+    st = mesh_stats(verts, faces)
+    if args.format in ("stl", "both"):
+        write_stl(f"{out_dir}/{base_name}.stl", verts, faces, base_name)
+    if args.format in ("3mf", "both"):
+        write_3mf(f"{out_dir}/{base_name}.3mf", verts, faces, base_name)
+    bb = st["bbox"]
+    print(f"    {base_name}: {st['tris']} треуг., объём {st['volume_cm3']:.1f} см³, "
+          f"габарит {bb[0]:.1f} x {bb[1]:.1f} x {bb[2]:.1f} мм")
+
+    if args.preview:
+        render_preview(f"{out_dir}/{base_name}.png", verts, faces)
+        print(f"    превью: {out_dir}/{base_name}.png")
+    return st
+
+
+def main():
+    args = build_parser().parse_args()
+    import os
+    os.makedirs(args.out, exist_ok=True)
+
+    if args.side in ("right", "both"):
+        make_part(args, "case", args.seed, args.out, "cobra-x_right")
+    if args.side in ("left", "both"):
+        make_part(args, "case", args.seed + 101, args.out, "cobra-x_left", mirror=True)
+    if args.side == "gauge":
+        make_part(args, "gauge", args.seed, args.out, "cobra-x_fit-gauge")
+
+
+if __name__ == "__main__":
+    main()
