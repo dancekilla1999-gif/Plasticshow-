@@ -78,7 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=7, help="зерно генератора рисунка")
 
     # сетка/вывод
-    p.add_argument("--voxel", type=float, default=0.45, help="шаг воксельной сетки, мм")
+    p.add_argument("--voxel", type=float, default=0.40, help="шаг воксельной сетки, мм")
     p.add_argument("--side", choices=["left", "right", "both", "gauge"], default="both")
     p.add_argument("--out", default="stl", help="каталог вывода")
     p.add_argument("--format", choices=["stl", "3mf", "both"], default="both",
@@ -394,8 +394,8 @@ def build_web(args, phis, s_tab, pt_tab, rng):
         pts3 = disc_to_surface(curve[:, 0], curve[:, 1], phis, s_tab, pt_tab)
         radii = node_r[u] * (1 - ts) + node_r[v] * ts
         radii = radii * (0.78 + 0.22 * np.abs(2 * ts - 1) ** 1.4)
-        for i in range(sub):
-            segments.append((pts3[i], pts3[i + 1], radii[i], radii[i + 1]))
+        segments.append([(pts3[i], pts3[i + 1], radii[i], radii[i + 1])
+                         for i in range(sub)])
 
     # наплыв металла в узлах: шар чуть толще сходящихся жил
     used_nodes = np.unique(edges)
@@ -403,7 +403,7 @@ def build_web(args, phis, s_tab, pt_tab, rng):
         p = disc_to_surface(seeds[idx:idx + 1, 0], seeds[idx:idx + 1, 1],
                             phis, s_tab, pt_tab)[0]
         r = node_r[idx] * args.node_blob
-        segments.append((p, p.copy(), r, r))
+        segments.append([(p, p.copy(), r, r)])
 
     # висящие «капли» — короткий отросток с утолщением на конце
     inner_nodes = np.flatnonzero(~fixed)
@@ -421,8 +421,8 @@ def build_web(args, phis, s_tab, pt_tab, rng):
             path = np.array([seeds[idx] * (1 - t) + tip * t for t in np.linspace(0, 1, 4)])
             pts3 = disc_to_surface(path[:, 0], path[:, 1], phis, s_tab, pt_tab)
             rr = np.linspace(node_r[idx] * 0.72, args.strut * rng.uniform(1.1, 1.5), 4)
-            for i in range(3):
-                segments.append((pts3[i], pts3[i + 1], rr[i], rr[i + 1]))
+            segments.append([(pts3[i], pts3[i + 1], rr[i], rr[i + 1])
+                             for i in range(3)])
     return segments, seeds, edges, fixed
 
 
@@ -648,16 +648,31 @@ def snap_to_surface(pts, d_cup, origin, voxel, level, iters=3):
     return p
 
 
-def segment_field(shape, origin, voxel, segments, blend):
-    """Поле расстояний до сети конических капсул (только вокруг жил)."""
+def segment_field(shape, origin, voxel, chains, blend):
+    """
+    Поле расстояний до сети конических капсул.
+
+    Каждая жила приходит цепочкой сегментов. Внутри цепочки берётся обычный
+    минимум: соседние звенья лежат на одной оси, и плавное объединение
+    надувало бы на каждом стыке горбик. Между разными жилами — плавный
+    минимум, он и даёт наплыв в узлах.
+    """
     field = np.full(shape, 40.0, dtype=np.float32)
     nz, ny, nx = shape
-    for p0, p1, r0, r1 in segments:
-        rmax = max(r0, r1) + blend + 1.2
-        lo = np.minimum(p0, p1) - rmax
-        hi = np.maximum(p0, p1) + rmax
+
+    def bounds(items):
+        lo = np.minimum.reduce([np.minimum(p0, p1) - (max(r0, r1) + blend + 1.2)
+                                for p0, p1, r0, r1 in items])
+        hi = np.maximum.reduce([np.maximum(p0, p1) + (max(r0, r1) + blend + 1.2)
+                                for p0, p1, r0, r1 in items])
         i0 = np.maximum(((lo - origin) / voxel).astype(int), 0)
         i1 = np.minimum(((hi - origin) / voxel).astype(int) + 2, [nx, ny, nz])
+        return i0, i1
+
+    for chain in chains:
+        if not chain:
+            continue
+        i0, i1 = bounds(chain)
         if np.any(i1 <= i0):
             continue
         xs = origin[0] + np.arange(i0[0], i1[0]) * voxel
@@ -665,20 +680,23 @@ def segment_field(shape, origin, voxel, segments, blend):
         zs = origin[2] + np.arange(i0[2], i1[2]) * voxel
         Z, Y, X = np.meshgrid(zs, ys, xs, indexing="ij")
 
-        v = p1 - p0
-        L2 = float(v @ v)
-        wx, wy, wz = X - p0[0], Y - p0[1], Z - p0[2]
-        if L2 < 1e-9:
-            t = np.zeros_like(wx)          # вырожденный сегмент — шар в узле
-        else:
-            t = np.clip((wx * v[0] + wy * v[1] + wz * v[2]) / L2, 0.0, 1.0)
-        dx = wx - t * v[0]
-        dy = wy - t * v[1]
-        dz = wz - t * v[2]
-        d = np.sqrt(dx * dx + dy * dy + dz * dz) - (r0 + t * (r1 - r0))
+        local = np.full(Z.shape, 40.0, dtype=np.float32)
+        for p0, p1, r0, r1 in chain:
+            v = p1 - p0
+            L2 = float(v @ v)
+            wx, wy, wz = X - p0[0], Y - p0[1], Z - p0[2]
+            if L2 < 1e-9:
+                t = np.zeros_like(wx)          # вырожденный сегмент — шар в узле
+            else:
+                t = np.clip((wx * v[0] + wy * v[1] + wz * v[2]) / L2, 0.0, 1.0)
+            dx = wx - t * v[0]
+            dy = wy - t * v[1]
+            dz = wz - t * v[2]
+            d = np.sqrt(dx * dx + dy * dy + dz * dz) - (r0 + t * (r1 - r0))
+            np.minimum(local, d.astype(np.float32), out=local)
 
         sub = field[i0[2]:i1[2], i0[1]:i1[1], i0[0]:i1[0]]
-        field[i0[2]:i1[2], i0[1]:i1[1], i0[0]:i1[0]] = smin(sub, d.astype(np.float32), blend)
+        field[i0[2]:i1[2], i0[1]:i1[1], i0[0]:i1[0]] = smin(sub, local, blend)
     return field
 
 
@@ -752,13 +770,20 @@ def build_field(args, mode: str, rng):
     roses, leaves, thorns = decor_placements(args, seeds, edges, fixed, rng)
 
     # притягиваем узлы сегментов к точной средней поверхности
-    allp = np.array([p for seg in segments for p in (seg[0], seg[1])])
-    allp = snap_to_surface(allp, d_cup, origin, vx, core)
-    segments = [
-        (allp[2 * i], allp[2 * i + 1], segments[i][2], segments[i][3])
-        for i in range(len(segments))
-    ]
-    print(f"    сеть: {len(seeds)} узлов, {len(edges)} рёбер, {len(segments)} сегментов")
+    flat = [seg for chain in segments for seg in chain]
+    allp = snap_to_surface(
+        np.array([p for seg in flat for p in (seg[0], seg[1])]),
+        d_cup, origin, vx, core)
+    k = 0
+    snapped = []
+    for chain in segments:
+        out = []
+        for seg in chain:
+            out.append((allp[k], allp[k + 1], seg[2], seg[3]))
+            k += 2
+        snapped.append(out)
+    segments = snapped
+    print(f"    сеть: {len(seeds)} узлов, {len(edges)} рёбер, {len(flat)} сегментов")
 
     # положение и базис для всего декора считаем заранее: стебли роз и шипы
     # должны попасть в общий растр вместе с лозой, иначе цветок улетает отдельно
@@ -779,8 +804,8 @@ def build_field(args, mode: str, rng):
             side = np.cross(n, t)
             direction = n * 0.72 + t * (0.5 * lean) + side * (0.3 * lean)
             direction /= max(np.linalg.norm(direction), 1e-9)
-            segments.append((c, c + direction * (5.4 * scale),
-                             1.5 * scale, 0.32 * scale))
+            segments.append([(c, c + direction * (5.4 * scale),
+                              1.5 * scale, 0.32 * scale)])
 
     rose_spots = []
     if rose_frames is not None:
@@ -788,7 +813,7 @@ def build_field(args, mode: str, rng):
             size = args.rose_size * scale
             centre = c + n * (args.strut * 0.75 + size * 0.36)
             # стебель: роза всегда приросла к лозе
-            segments.append((c, centre, args.strut * 0.62, size * 0.30))
+            segments.append([(c, centre, args.strut * 0.62, size * 0.30)])
             rose_spots.append((centre, local_axes(n, t), size))
 
     t0 = time.time()
@@ -846,7 +871,7 @@ def field_to_mesh(field, origin, voxel):
     return verts.astype(np.float32), faces.astype(np.int32)
 
 
-def smooth_mesh(verts, faces, iterations=3, lam=0.58, mu=-0.60):
+def smooth_mesh(verts, faces, iterations=5, lam=0.58, mu=-0.60):
     """
     Сглаживание Тобина (lambda/mu): снимает воксельную лесенку и оставляет
     поверхность непрерывной, но, в отличие от лапласова, не ужимает деталь —
@@ -991,60 +1016,87 @@ def mesh_stats(verts, faces):
 # превью
 # --------------------------------------------------------------------------
 
-def render_preview(path, verts, faces, size=900, yaw=-0.55, pitch=0.60, samples=26):
-    """Мягкий рендер «хрома»: сплат точек в z-буфер + освещение по нормалям глубины."""
-    rng = np.random.default_rng(0)
-    tri = verts[faces]
-    pts = [tri[:, 0], tri[:, 1], tri[:, 2]]
-    for _ in range(samples):
-        w = rng.random((len(faces), 3))
-        w /= w.sum(axis=1, keepdims=True)
-        pts.append((tri * w[:, :, None]).sum(axis=1))
-    p = np.vstack(pts)
+def render_preview(path, verts, faces, size=900, yaw=-0.55, pitch=0.60, density=9.0):
+    """
+    Превью с настоящими нормалями меша.
 
-    c = p - (verts.max(axis=0) + verts.min(axis=0)) / 2.0
+    Точки набрасываются по треугольникам плотностью, пропорциональной их
+    площади на экране, и вместе с глубиной в буфер кладётся нормаль грани.
+    Освещение считается по ней, а не по градиенту глубины: рябь буфера больше
+    не превращается в несуществующую шагрень.
+    """
+    tri = verts[faces].astype(np.float64)
+
+    c = (verts.max(axis=0) + verts.min(axis=0)) / 2.0
     cy, sy = math.cos(yaw), math.sin(yaw)
     cp, sp = math.cos(pitch), math.sin(pitch)
-    x = c[:, 0] * cy + c[:, 1] * sy
-    y1 = -c[:, 0] * sy + c[:, 1] * cy
-    y = y1 * cp - c[:, 2] * sp
-    z = y1 * sp + c[:, 2] * cp
+    M = np.array([
+        [cy, sy, 0.0],
+        [-sy * cp, cy * cp, -sp],
+        [-sy * sp, cy * sp, cp],
+    ])
 
-    span = max(np.ptp(x), np.ptp(y)) * 1.12
-    px = ((x / span + 0.5) * size).astype(int)
-    py = ((-y / span + 0.5) * size).astype(int)
+    span = 1e-9
+    for k in range(3):
+        pv = (verts - c) @ M.T
+        span = max(span, np.ptp(pv[:, 0]), np.ptp(pv[:, 1]))
+        break
+    span *= 1.12
+    scale = size / span
+
+    n = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    ln = np.linalg.norm(n, axis=1, keepdims=True)
+    ln[ln == 0] = 1.0
+    n = (n / ln) @ M.T
+
+    p = (tri - c) @ M.T
+    area = 0.5 * np.abs(
+        (p[:, 1, 0] - p[:, 0, 0]) * (p[:, 2, 1] - p[:, 0, 1])
+        - (p[:, 2, 0] - p[:, 0, 0]) * (p[:, 1, 1] - p[:, 0, 1])
+    ) * scale * scale
+    counts = np.maximum(np.ceil(area * density), 1).astype(np.int64)
+    counts = np.minimum(counts, 400)
+
+    idx = np.repeat(np.arange(len(faces)), counts)
+    rng = np.random.default_rng(0)
+    w = rng.random((len(idx), 3))
+    w /= w.sum(axis=1, keepdims=True)
+    pts = (p[idx] * w[:, :, None]).sum(axis=1)
+
+    px = ((pts[:, 0] / span + 0.5) * size).astype(np.int64)
+    py = ((-pts[:, 1] / span + 0.5) * size).astype(np.int64)
     ok = (px >= 0) & (px < size) & (py >= 0) & (py < size)
-    px, py, z = px[ok], py[ok], z[ok]
+    px, py, idx = px[ok], py[ok], idx[ok]
+    depth = (-pts[ok, 2]).astype(np.float32)
 
+    flat = py * size + px
     zbuf = np.full(size * size, 1e9, dtype=np.float32)
-    np.minimum.at(zbuf, py * size + px, -z.astype(np.float32))
-    zbuf = zbuf.reshape(size, size)
-    mask = zbuf < 1e8
-    depth = np.where(mask, zbuf, zbuf[mask].max() if mask.any() else 0.0)
-    depth = ndimage.grey_closing(depth, size=3)
-    depth = ndimage.gaussian_filter(depth, 1.1)
+    np.minimum.at(zbuf, flat, depth)
 
-    gy, gx = np.gradient(depth)
-    scale = 4.0
-    nx, ny, nz = -gx * scale, -gy * scale, np.ones_like(depth)
-    ln = np.sqrt(nx * nx + ny * ny + nz * nz)
-    nx, ny, nz = nx / ln, ny / ln, nz / ln
+    win = depth <= zbuf[flat] + 1e-4
+    nrm = np.zeros((size * size, 3), dtype=np.float32)
+    nrm[flat[win]] = n[idx[win]]
 
-    light = np.array([-0.45, -0.55, 0.70])
+    mask = (zbuf < 1e8).reshape(size, size)
+    nrm = nrm.reshape(size, size, 3)
+    ln = np.linalg.norm(nrm, axis=2, keepdims=True)
+    nrm = nrm / np.where(ln < 1e-6, 1.0, ln)
+
+    light = np.array([-0.62, 0.55, 0.56])
     light /= np.linalg.norm(light)
-    lam = np.clip(nx * light[0] + ny * light[1] + nz * light[2], 0, 1)
-    spec = np.clip(lam, 0, 1) ** 42
-    fres = (1.0 - np.clip(nz, 0, 1)) ** 2.2
+    fill_dir = np.array([0.70, -0.45, 0.55])
+    fill_dir /= np.linalg.norm(fill_dir)
+    lam = np.clip(nrm @ light, 0.0, 1.0)
+    fill = np.clip(nrm @ fill_dir, 0.0, 1.0)
+    spec = lam ** 22
+    fres = (1.0 - np.clip(nrm[..., 2], 0.0, 1.0)) ** 2.0
 
-    img = 0.20 + 0.62 * lam + 0.85 * spec + 0.28 * fres
-    img = np.clip(img, 0, 1)
-    rgb = np.stack([img * 0.98, img * 0.99, np.clip(img * 1.02, 0, 1)], axis=-1)
+    img = np.clip(0.07 + 0.72 * lam ** 1.15 + 0.26 * fill + 0.55 * spec + 0.20 * fres,
+                  0.0, 1.0)
+    rgb = np.stack([img * 0.98, img * 0.99, np.minimum(img * 1.03, 1.0)], axis=-1)
     bg = np.array([0.10, 0.10, 0.11])
-    m = ndimage.binary_closing(mask, np.ones((3, 3)))
-    out = np.where(m[..., None], rgb, bg)
-    out = (np.clip(out, 0, 1) * 255).astype(np.uint8)
-
-    _write_png(path, out)
+    out = np.where(mask[..., None], rgb, bg)
+    _write_png(path, (np.clip(out, 0, 1) * 255).astype(np.uint8))
 
 
 def _write_png(path, rgb):
@@ -1077,7 +1129,7 @@ def make_part(args, mode, seed, out_dir, base_name, mirror=False):
     verts, faces, dropped = largest_component(verts, faces)
     if dropped:
         print(f"    отброшено {dropped} вершин несвязанных кусочков")
-    verts = smooth_mesh(verts, faces, iterations=3)
+    verts = smooth_mesh(verts, faces, iterations=5)
     if mirror:
         verts, faces = mirror_x(verts, faces)
     verts = place_on_bed(verts)
