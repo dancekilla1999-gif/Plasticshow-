@@ -36,10 +36,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Генератор Cobra X для AirPods Max")
 
     # геометрия чашки
-    p.add_argument("--cup-w", type=float, default=84.0, help="ширина чашки, мм (ось X)")
-    p.add_argument("--cup-h", type=float, default=98.0, help="высота чашки, мм (ось Y)")
-    p.add_argument("--cup-n", type=float, default=2.35, help="показатель суперэллипса контура")
-    p.add_argument("--dome", type=float, default=9.0, help="выпуклость внешней поверхности, мм")
+    p.add_argument("--cup-w", type=float, default=83.4, help="ширина чашки, мм (ось X)")
+    p.add_argument("--cup-h", type=float, default=100.0, help="высота чашки, мм (ось Y)")
+    p.add_argument("--cup-n", type=float, default=2.15, help="показатель суперэллипса контура")
+    p.add_argument("--dome", type=float, default=10.0, help="выпуклость внешней поверхности, мм")
     p.add_argument("--cup-depth", type=float, default=16.0, help="глубина боковой стенки чашки, мм")
 
     # посадка
