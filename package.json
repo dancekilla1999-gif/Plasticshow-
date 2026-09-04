@@ -9,6 +9,7 @@
     "lint": "next lint",
     "media": "node scripts/prepare-media.mjs",
     "video": "node scripts/prepare-video.mjs",
+    "model": "node scripts/generate-earpad-model.mjs",
     "vercel-build": "next build"
   },
   "dependencies": {
