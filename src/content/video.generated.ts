@@ -5,26 +5,26 @@ export const VIDEO_MANIFEST = {
   "apalle": {
     "w": 1280,
     "h": 720,
-    "seconds": 12,
-    "kb": 2504
+    "seconds": 20,
+    "kb": 3343
   },
   "aziya": {
     "w": 720,
     "h": 1280,
-    "seconds": 10,
-    "kb": 2077
+    "seconds": 9,
+    "kb": 1845
   },
   "bal-anastasiya": {
     "w": 720,
     "h": 1280,
-    "seconds": 12,
-    "kb": 2536
+    "seconds": 20,
+    "kb": 4063
   },
   "balerina-shou-balet": {
     "w": 720,
     "h": 1280,
-    "seconds": 12,
-    "kb": 1107
+    "seconds": 20,
+    "kb": 3262
   },
   "barokko": {
     "w": 720,
@@ -35,14 +35,14 @@ export const VIDEO_MANIFEST = {
   "bogini": {
     "w": 720,
     "h": 1280,
-    "seconds": 11,
-    "kb": 2300
+    "seconds": 20,
+    "kb": 3527
   },
   "dikie-zemli": {
-    "w": 720,
-    "h": 1280,
-    "seconds": 12,
-    "kb": 2591
+    "w": 1280,
+    "h": 720,
+    "seconds": 20,
+    "kb": 4233
   },
   "disko": {
     "w": 720,
@@ -53,8 +53,8 @@ export const VIDEO_MANIFEST = {
   "feniks": {
     "w": 720,
     "h": 1280,
-    "seconds": 7,
-    "kb": 1575
+    "seconds": 8,
+    "kb": 1790
   },
   "fil-gud": {
     "w": 1280,
@@ -83,8 +83,8 @@ export const VIDEO_MANIFEST = {
   "gretsiya": {
     "w": 720,
     "h": 1280,
-    "seconds": 12,
-    "kb": 2596
+    "seconds": 20,
+    "kb": 4214
   },
   "hero-landscape": {
     "w": 1600,
@@ -123,28 +123,28 @@ export const VIDEO_MANIFEST = {
     "kb": 827
   },
   "nimfy": {
-    "w": 1280,
-    "h": 720,
-    "seconds": 12,
-    "kb": 2520
+    "w": 720,
+    "h": 1280,
+    "seconds": 19,
+    "kb": 3951
   },
   "novyy-god": {
     "w": 1280,
     "h": 720,
-    "seconds": 12,
-    "kb": 2597
+    "seconds": 20,
+    "kb": 4179
   },
   "ofishl": {
-    "w": 720,
-    "h": 1280,
-    "seconds": 11,
-    "kb": 2411
+    "w": 1280,
+    "h": 720,
+    "seconds": 20,
+    "kb": 2547
   },
   "otel": {
     "w": 720,
     "h": 1280,
-    "seconds": 12,
-    "kb": 2595
+    "seconds": 20,
+    "kb": 4206
   },
   "pakahontas": {
     "w": 720,
@@ -154,15 +154,15 @@ export const VIDEO_MANIFEST = {
   },
   "pozhary": {
     "w": 1280,
-    "h": 722,
-    "seconds": 9,
-    "kb": 1870
+    "h": 720,
+    "seconds": 20,
+    "kb": 3282
   },
   "rok": {
     "w": 720,
     "h": 1280,
-    "seconds": 12,
-    "kb": 2573
+    "seconds": 19,
+    "kb": 3846
   },
   "rozy-tsvety": {
     "w": 720,
@@ -173,8 +173,8 @@ export const VIDEO_MANIFEST = {
   "rus": {
     "w": 720,
     "h": 1280,
-    "seconds": 12,
-    "kb": 2512
+    "seconds": 20,
+    "kb": 4160
   },
   "shah-i-mat": {
     "w": 720,
@@ -195,16 +195,16 @@ export const VIDEO_MANIFEST = {
     "kb": 2478
   },
   "snezhnye-korolevy": {
-    "w": 720,
-    "h": 1280,
-    "seconds": 12,
-    "kb": 2550
+    "w": 1280,
+    "h": 720,
+    "seconds": 20,
+    "kb": 2992
   },
   "tatu": {
-    "w": 720,
-    "h": 1280,
-    "seconds": 12,
-    "kb": 2609
+    "w": 1280,
+    "h": 720,
+    "seconds": 20,
+    "kb": 4227
   },
   "venom-vumen": {
     "w": 1280,
@@ -221,8 +221,8 @@ export const VIDEO_MANIFEST = {
   "zov-vorona": {
     "w": 1280,
     "h": 720,
-    "seconds": 12,
-    "kb": 2556
+    "seconds": 20,
+    "kb": 3800
   }
 } as const satisfies Record<string, VideoMeta>;
 
