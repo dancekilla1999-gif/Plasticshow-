@@ -5,10 +5,11 @@
  */
 import { readdir, mkdir, writeFile } from 'node:fs/promises';
 import { join, parse } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
-const SRC = new URL('../assets/photos/', import.meta.url).pathname;
-const OUT = new URL('../public/media/', import.meta.url).pathname;
+const SRC = fileURLToPath(new URL('../assets/photos/', import.meta.url));
+const OUT = fileURLToPath(new URL('../public/media/', import.meta.url));
 const WIDTHS = [480, 768, 1200, 1800];
 
 await mkdir(OUT, { recursive: true });

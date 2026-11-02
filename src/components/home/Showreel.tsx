@@ -4,12 +4,18 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Media } from '@/components/ui/Media';
 import { SHOW_VIDEOS } from '@/content/videos';
-import { CATEGORY_LABEL } from '@/content/shows';
+import { CATEGORY_LABEL, getShow } from '@/content/shows';
 import { getCapabilities } from '@/lib/capabilities';
 import { plural } from '@/lib/plural';
 
-/** Enough to fill a wide rail without turning the home page into a playlist. */
-const RAIL = SHOW_VIDEOS.filter((v) => v.portrait).slice(0, 8);
+/** Two new stills lead the rail; the rest remains a compact video playlist. */
+const GZHEL = getShow('gzhel')!;
+const PHOTO_RAIL = (['gzhel-3', 'gzhel-7'] as const).map((poster) => ({
+  show: GZHEL,
+  poster,
+  src: undefined,
+}));
+const RAIL = [...PHOTO_RAIL, ...SHOW_VIDEOS.filter((v) => v.portrait).slice(0, 8)];
 
 /**
  * Horizontal rail of live previews.
@@ -104,12 +110,12 @@ export function Showreel() {
       >
         {RAIL.map((item, i) => (
           <li
-            key={item.show.slug}
+            key={item.poster}
             className="w-[68vw] shrink-0 snap-center sm:w-[42vw] lg:w-[23vw]"
           >
             <Link
               href={`/shows/${item.show.slug}`}
-              data-cursor="Play"
+              data-cursor={item.src ? 'Play' : 'Смотреть'}
               className="group relative block aspect-[9/16] overflow-hidden bg-graphite"
             >
               <Media
@@ -118,7 +124,7 @@ export function Showreel() {
                 sizes="(max-width: 640px) 68vw, (max-width: 1024px) 42vw, 23vw"
                 className="h-full w-full object-cover"
               />
-              {enabled && active === i && <RailVideo src={item.src} />}
+              {enabled && active === i && item.src && <RailVideo src={item.src} />}
               <div className="absolute inset-0 bg-gradient-to-t from-void via-void/15 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-5">
                 <p className="kicker mb-2 text-bone/50">{CATEGORY_LABEL[item.show.category]}</p>

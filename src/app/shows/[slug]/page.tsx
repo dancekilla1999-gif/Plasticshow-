@@ -89,7 +89,7 @@ export default async function ShowPage({ params }: Params) {
             alt={`${show.title} — ${show.tagline}`}
             sizes="100vw"
             priority
-            className="h-full w-full object-cover"
+            className={`h-full w-full object-cover ${show.slug === 'gzhel' ? 'object-[50%_20%]' : ''}`}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-void via-void/60 to-void/35" />
           <div

@@ -55,6 +55,19 @@ export const CATEGORY_LABEL: Record<ShowCategory, string> = {
 
 export const SHOWS: Show[] = [
   {
+    slug: 'gzhel',
+    title: 'ГЖЕЛЬ',
+    latin: 'GZHEL',
+    category: 'folk',
+    tagline: 'Бело-синяя роспись и кокошники',
+    intro:
+      'Номер, вдохновлённый гжельской росписью: белые костюмы с синим орнаментом, объёмные кокошники и воздушные рукава. Нарядная сценическая подача соединяет русский декоративный мотив с современной пластикой.',
+    palette: ['#080b14', '#3d67b0'],
+    cover: 'gzhel-3',
+    stills: ['gzhel-1', 'gzhel-2', 'gzhel-4', 'gzhel-5', 'gzhel-6', 'gzhel-7', 'gzhel-8'],
+    costume: 'Бело-синие костюмы с орнаментом, кокошники, полупрозрачные рукава из органзы.',
+  },
+  {
     slug: 'rozy-tsvety',
     title: 'РОЗЫ ЦВЕТЫ',
     latin: 'ROSES',
