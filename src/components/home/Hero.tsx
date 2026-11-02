@@ -3,9 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Media } from '@/components/ui/Media';
 import { StageField } from '@/components/motion/StageField';
-import { HeroVideo } from './HeroVideo';
+import { HeroSlideshow } from './HeroSlideshow';
 import { WordmarkWord } from '@/components/brand/Wordmark';
 import { ButtonLink } from '@/components/ui/Button';
 import { EVENT_FORMATS } from '@/content/site';
@@ -58,14 +57,7 @@ export function Hero() {
   return (
     <div ref={root} className="relative h-[100svh] min-h-[560px] w-full overflow-hidden">
       <div data-hero-backdrop className="absolute inset-0 will-change-transform">
-        <Media
-          slug="dikie-zemli-4"
-          alt="Артистки Plastic Show на сцене"
-          sizes="100vw"
-          priority
-          className="h-full w-full object-cover object-[50%_35%]"
-        />
-        <HeroVideo />
+        <HeroSlideshow />
         {/* Two gradients: one grounds the type, one darkens the whole frame. */}
         <div className="absolute inset-0 bg-gradient-to-t from-void via-void/40 to-void/55" />
         <StageField />
