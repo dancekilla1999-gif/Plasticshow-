@@ -8,14 +8,24 @@ import { CATEGORY_LABEL, getShow } from '@/content/shows';
 import { getCapabilities } from '@/lib/capabilities';
 import { plural } from '@/lib/plural';
 
-/** Two new stills lead the rail; the rest remains a compact video playlist. */
-const GZHEL = getShow('gzhel')!;
-const PHOTO_RAIL = (['gzhel-3', 'gzhel-7'] as const).map((poster) => ({
-  show: GZHEL,
+/** The saved photo rail, with the two Gzhel stills added — no video cards. */
+const PHOTO_CARDS = [
+  { slug: 'gzhel', poster: 'gzhel-3' },
+  { slug: 'gzhel', poster: 'gzhel-7' },
+  { slug: 'rozy-tsvety', poster: 'rozy-tsvety-13' },
+  { slug: 'matritsa', poster: 'matritsa-9' },
+  { slug: 'aziya', poster: 'aziya-3' },
+  { slug: 'gretsiya', poster: 'gretsiya-10' },
+  { slug: 'barokko', poster: 'barokko-6' },
+  { slug: 'gladiatory', poster: 'gladiatory-1' },
+  { slug: 'bogini', poster: 'bogini-1' },
+  { slug: 'kombinatsiya', poster: 'kombinatsiya-9' },
+] as const;
+const RAIL = PHOTO_CARDS.map(({ slug, poster }) => ({
+  show: getShow(slug)!,
   poster,
   src: undefined,
 }));
-const RAIL = [...PHOTO_RAIL, ...SHOW_VIDEOS.filter((v) => v.portrait).slice(0, 8)];
 
 /**
  * Horizontal rail of live previews.
