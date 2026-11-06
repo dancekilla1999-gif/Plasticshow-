@@ -182,6 +182,13 @@ export default async function ShowPage({ params }: Params) {
           <div data-reveal="mask">
             <InlineVideo video={video} />
           </div>
+          {show.fullVideoUrl && (
+            <div className="mt-8" data-reveal>
+              <ButtonLink href={show.fullVideoUrl} variant="outline">
+                Смотреть полное видео <span aria-hidden>↗</span>
+              </ButtonLink>
+            </div>
+          )}
         </section>
       )}
 

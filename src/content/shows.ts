@@ -24,6 +24,8 @@ export type Show = {
   /** Extra photographs shown in the show page's own gallery strip. */
   stills: MediaSlug[];
   costume: string;
+  /** Link to the full-length recording (Google Drive), shown under the preview. */
+  fullVideoUrl?: string;
   /** True where the archive holds only video, so the cover is a video still. */
   coverFromVideo?: boolean;
   /** Marks the pieces that lead the home page's featured grid. */

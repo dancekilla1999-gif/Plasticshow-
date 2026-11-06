@@ -86,6 +86,12 @@ export const VIDEO_MANIFEST = {
     "seconds": 20,
     "kb": 4214
   },
+  "gzhel": {
+    "w": 1920,
+    "h": 1080,
+    "seconds": 15,
+    "kb": 8588
+  },
   "hero-landscape": {
     "w": 1600,
     "h": 900,
