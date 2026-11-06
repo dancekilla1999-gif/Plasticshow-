@@ -68,6 +68,7 @@ export const SHOWS: Show[] = [
     cover: 'gzhel-3',
     stills: ['gzhel-1', 'gzhel-2', 'gzhel-4', 'gzhel-5', 'gzhel-6', 'gzhel-7', 'gzhel-8'],
     costume: 'Бело-синие костюмы с орнаментом, кокошники, полупрозрачные рукава из органзы.',
+    fullVideoUrl: 'https://drive.google.com/file/d/1u9vJcpfsylGLKK_2KE2AcG2G3pQmzLlS/view',
   },
   {
     slug: 'rozy-tsvety',
